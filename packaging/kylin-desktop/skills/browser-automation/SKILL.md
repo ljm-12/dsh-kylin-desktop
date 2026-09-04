@@ -77,6 +77,11 @@ dsh-browser tabs      # List active browser tabs
 dsh-browser stop      # Close browser session
 ```
 
+## Configuration
+
+- Default CDP port is 9222; override with `--port N` or `DSH_BROWSER_PORT` when running concurrent sessions.
+- The browser profile persists at `~/.dsh-browser-profile` (override: `--user-data-dir` / `DSH_BROWSER_USER_DATA_DIR`), so intranet logins survive across sessions.
+
 ## Best Practices
 1. **Always `dump` after `open`**: Run `dsh-browser dump` to see the available elements and selectors before clicking or typing.
 2. **Verify navigation**: After clicking a submit button or link, run `dsh-browser dump` or `dsh-browser screenshot` to verify the page has updated.

@@ -82,6 +82,8 @@ if [ -d "$OFFICE_DIR/downloads" ]; then
   chmod 755 "$OFFICE_DIR/dsh-office" "$OFFICE_DIR/dsh-browser" "$OFFICE_DIR/dsh-python"
   chmod -R 755 "$OFFICE_DIR/python/bin"
   chmod 644 "$OFFICE_DIR/office_tool.py" "$OFFICE_DIR/browser_tool.py"
+  "$OFFICE_DIR/dsh-python" -c "import pypdf, docx, openpyxl, pptx, lxml, PIL; print('build-on-arm64: office runtime imports verified')"
+  "$OFFICE_DIR/dsh-office" --help >/dev/null
   rm -rf "$OFFICE_DIR/downloads"
 fi
 chmod 755 "$PACKAGE_ROOT/build"/deb-*.sh
