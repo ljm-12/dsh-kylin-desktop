@@ -61,22 +61,32 @@ ELECTRON="$(find "$VERIFY_ROOT/root/opt" -type f -name 'deepseek-harness-kylin' 
 test -n "$ELECTRON"
 test -x "$ELECTRON"
 verify_arm64 "$ELECTRON"
-for executable in "$RUNTIME" "$RIPGREP" "$ELECTRON"; do
-  maximum="$(readelf --version-info "$executable" 2>/dev/null | sed -n 's/.*Name: GLIBC_\([0-9.]*\).*/\1/p' | sort -V | tail -1 || true)"
-  echo "verify-linux-artifacts: $executable maximum GLIBC=${maximum:-static}"
-  if [[ -n "$maximum" ]]; then
-    dpkg --compare-versions "$maximum" le 2.39
-  fi
-done
-grep -Fq 'provider: intranet-openai' "$PATCH"
-grep -A1 -F -- '- id: llm-deepseek' "$PATCH" | grep -Fq 'disabled: true'
-grep -A1 -F -- '- id: tool-web' "$PATCH" | grep -Fq 'disabled: true'
 
 OFFICE_PATH="$(find "$VERIFY_ROOT/root/opt" -type d -name 'office' | head -1)"
 test -n "$OFFICE_PATH"
 test -x "$OFFICE_PATH/dsh-office"
 test -x "$OFFICE_PATH/dsh-browser"
 test -x "$OFFICE_PATH/dsh-python"
+
+PYTHON_BIN="$(find "$OFFICE_PATH/python/bin" -type f -name 'python3.10' 2>/dev/null | head -1 || true)"
+test -n "$PYTHON_BIN"
+test -x "$PYTHON_BIN"
+verify_arm64 "$PYTHON_BIN"
+
+test -d "$OFFICE_PATH/python/lib/python3.10/site-packages/pypdf"
+
+for executable in "$RUNTIME" "$RIPGREP" "$ELECTRON" "$PYTHON_BIN"; do
+  maximum="$(readelf --version-info "$executable" 2>/dev/null | sed -n 's/.*Name: GLIBC_\([0-9.]*\).*/\1/p' | sort -V | tail -1 || true)"
+  echo "verify-linux-artifacts: $executable maximum GLIBC=${maximum:-static}"
+  if [[ -n "$maximum" ]]; then
+    dpkg --compare-versions "$maximum" le 2.28
+  fi
+done
+grep -Fq 'provider: intranet-openai' "$PATCH"
+grep -A1 -F -- '- id: llm-deepseek' "$PATCH" | grep -Fq 'disabled: true'
+grep -A1 -F -- '- id: tool-web' "$PATCH" | grep -Fq 'disabled: true'
+grep -A1 -F -- '- id: message-feedback' "$PATCH" | grep -Fq 'disabled: true'
+
 SKILLS_PATH="$(find "$VERIFY_ROOT/root/opt" -type d -name 'skills' | head -1)"
 test -n "$SKILLS_PATH"
 test -f "$SKILLS_PATH/offline-office-documents/SKILL.md"
@@ -84,6 +94,10 @@ test -f "$SKILLS_PATH/browser-automation/SKILL.md"
 REPLACES="$(dpkg-deb --field "$DEB" Replaces || true)"
 echo "verify-linux-artifacts: Replaces=$REPLACES"
 echo "$REPLACES" | grep -Fq 'dsh-intranet-agent'
+
+dpkg-deb --control "$DEB" "$VERIFY_ROOT/control"
+test -f "$VERIFY_ROOT/control/postrm"
+test -f "$VERIFY_ROOT/control/postinst"
 
 verify_arm64 "$APPIMAGE"
 

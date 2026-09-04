@@ -79,14 +79,6 @@ if [ -d "$OFFICE_DIR/downloads" ]; then
   for wheel in "$OFFICE_DIR/downloads/wheels-arm64"/*.whl; do
     python3 -m zipfile -e "$wheel" "$SITE_PACKAGES"
   done
-  if python3 -m pip --version >/dev/null 2>&1; then
-    python3 -m pip download --dest "$OFFICE_DIR/downloads/wheels-arm64" --only-binary=:all: --no-deps pypdf || true
-    for pypdf_wheel in "$OFFICE_DIR/downloads/wheels-arm64"/pypdf*.whl; do
-      if [ -f "$pypdf_wheel" ]; then
-        python3 -m zipfile -e "$pypdf_wheel" "$SITE_PACKAGES"
-      fi
-    done
-  fi
   chmod 755 "$OFFICE_DIR/dsh-office" "$OFFICE_DIR/dsh-browser" "$OFFICE_DIR/dsh-python"
   chmod -R 755 "$OFFICE_DIR/python/bin"
   chmod 644 "$OFFICE_DIR/office_tool.py" "$OFFICE_DIR/browser_tool.py"

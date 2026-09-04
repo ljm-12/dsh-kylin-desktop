@@ -19,8 +19,11 @@ import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
 
-DEFAULT_PORT = 9222
-PROFILE_DIR = os.path.expanduser("~/.dsh-browser-profile")
+DEFAULT_PORT = int(os.environ.get("DSH_BROWSER_PORT", "9222"))
+DEFAULT_USER_DATA_DIR = os.environ.get(
+    "DSH_BROWSER_USER_DATA_DIR",
+    os.path.expanduser("~/.dsh-browser-profile"),
+)
 
 BROWSER_CANDIDATES = [
     os.environ.get("CHROMIUM_PATH"),
@@ -126,9 +129,15 @@ class WebSocketClient:
 class BrowserController:
     """Manages Chromium browser process and sends CDP commands."""
 
-    def __init__(self, port: int = DEFAULT_PORT, headless: bool = True):
+    def __init__(
+        self,
+        port: int = DEFAULT_PORT,
+        headless: bool = True,
+        user_data_dir: Optional[str] = None,
+    ):
         self.port = port
         self.headless = headless
+        self.user_data_dir = os.path.abspath(user_data_dir) if user_data_dir else DEFAULT_USER_DATA_DIR
         self._msg_id = 0
 
     def find_browser_executable(self) -> Optional[str]:
@@ -159,7 +168,7 @@ class BrowserController:
                 "Checked paths: " + ", ".join(c for c in BROWSER_CANDIDATES if c)
             )
 
-        os.makedirs(PROFILE_DIR, exist_ok=True)
+        os.makedirs(self.user_data_dir, exist_ok=True)
         cmd = [
             browser_bin,
             f"--remote-debugging-port={self.port}",
@@ -168,7 +177,7 @@ class BrowserController:
             "--disable-gpu",
             "--no-sandbox",
             "--disable-dev-shm-usage",
-            f"--user-data-dir={PROFILE_DIR}",
+            f"--user-data-dir={self.user_data_dir}",
             "--disable-background-networking",
             "--disable-sync",
         ]
@@ -369,7 +378,8 @@ class BrowserController:
 
 def main():
     parser = argparse.ArgumentParser(description="DeepSeek Harness Lightweight CDP Browser Tool")
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="CDP debugging port (default: 9222)")
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="CDP debugging port (default: 9222 or $DSH_BROWSER_PORT)")
+    parser.add_argument("--user-data-dir", default=DEFAULT_USER_DATA_DIR, help="Chromium user data directory (default: ~/.dsh-browser-profile or $DSH_BROWSER_USER_DATA_DIR)")
     parser.add_argument("--headed", action="store_true", help="Launch browser with visible GUI window (default: headless)")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -405,7 +415,11 @@ def main():
     subparsers.add_parser("stop", help="Close browser session")
 
     args = parser.parse_args()
-    ctl = BrowserController(port=args.port, headless=not args.headed)
+    ctl = BrowserController(
+        port=args.port,
+        headless=not args.headed,
+        user_data_dir=args.user_data_dir,
+    )
 
     try:
         if args.command == "open":

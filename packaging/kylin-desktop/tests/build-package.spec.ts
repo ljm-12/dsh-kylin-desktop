@@ -21,5 +21,6 @@ describe('Kylin package configuration', () => {
     expect(config.deb?.fpm).toContain('--replaces')
     expect(config.deb?.fpm).toContain('dsh-intranet-agent')
     expect(config.deb?.afterInstall).toBe('build/deb-postinstall.sh')
+    expect(config.deb?.afterRemove).toBe('build/deb-postrm.sh')
   })
 })

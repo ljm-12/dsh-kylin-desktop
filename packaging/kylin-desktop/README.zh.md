@@ -46,11 +46,13 @@ Electron 进程使用以下参数启动内置 Runtime：
 
 关闭 Electron 时先发送 `SIGTERM` 并等待 Runtime 退出，只在有界关闭时间结束后使用 `SIGKILL`。Runtime 意外退出时会向用户报告。
 
-## 内网策略
+## 内网策略与旧版迁移
 
-[`config/intranet.cordis.patch.yml`](config/intranet.cordis.patch.yml) 禁用 DeepSeek 公网路由、模型可见 Web 工具、DeepSeek 搜索、反馈界面与命令以及遥测。它提供可编辑的 `intranet-openai` OpenAI 兼容路由，初始地址为 `http://127.0.0.1:8000/v1`。
+[`config/intranet.cordis.patch.yml`](config/intranet.cordis.patch.yml) 禁用 DeepSeek 公网路由、模型可见 Web 工具、DeepSeek 搜索、主机与界面反馈插件以及遥测。它提供可编辑的 `intranet-openai` OpenAI 兼容路由，初始地址为 `http://127.0.0.1:8000/v1`。
 
 用户在 Settings > Models 中配置真实内网地址、模型列表和凭据。凭据保存在 Harness 凭据存储中，绝不进入安装包或构建元数据。
+
+从旧版 `dsh-intranet-agent` 迁移注意：桌面端安全层在启动 Runtime 时会自动过滤父进程的所有敏感环境变量（包括形如 `*_API_KEY`、`*_SECRET` 等），因此在 shell 中执行 `export INTRANET_AGENT_API_KEY=...` 将被隔离而不生效。请统一在桌面端界面的 Settings > Models 中录入 API 密钥，凭据将被安全保存至 Harness 本地凭据库中。
 
 ## 验证边界
 

@@ -49,6 +49,7 @@ export function packageConfiguration(version: string): Configuration {
       priority: 'optional',
       depends: ['libgtk-3-0', 'libnss3', 'libasound2', 'libxss1', 'libxtst6', 'xdg-utils'],
       afterInstall: 'build/deb-postinstall.sh',
+      afterRemove: 'build/deb-postrm.sh',
       fpm: [
         '--replaces', 'dsh-intranet-agent',
         '--conflicts', 'dsh-intranet-agent',

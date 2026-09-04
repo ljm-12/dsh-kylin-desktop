@@ -46,11 +46,13 @@ The window disables Node integration, enables context isolation and sandboxing, 
 
 Closing Electron sends `SIGTERM`, waits for the Runtime to exit, and uses `SIGKILL` only after the bounded shutdown interval. An unexpected Runtime exit is reported to the user.
 
-## Intranet policy
+## Intranet policy and migration
 
-[`config/intranet.cordis.patch.yml`](config/intranet.cordis.patch.yml) disables the public DeepSeek route, model-visible Web tool, DeepSeek search, feedback UI and command, and telemetry. It supplies an editable `intranet-openai` OpenAI-compatible route whose initial endpoint is `http://127.0.0.1:8000/v1`.
+[`config/intranet.cordis.patch.yml`](config/intranet.cordis.patch.yml) disables the public DeepSeek route, model-visible Web tool, DeepSeek search, host and UI feedback plugins, and telemetry. It supplies an editable `intranet-openai` OpenAI-compatible route whose initial endpoint is `http://127.0.0.1:8000/v1`.
 
 Users configure the real intranet endpoint, model list, and credential in Settings > Models. Credentials remain in the Harness credential store and never enter the package or build metadata.
+
+Note for migrations from legacy `dsh-intranet-agent`: the desktop security boundary scrubs sensitive environment variables (such as `*_API_KEY` and `*_SECRET`) before spawning the Runtime. Exporting `INTRANET_AGENT_API_KEY` in the shell is deliberately ignored. Configure API credentials in Settings > Models so they are stored safely in the Harness credential store.
 
 ## Verification boundaries
 
