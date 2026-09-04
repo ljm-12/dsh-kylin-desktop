@@ -40,3 +40,14 @@
 
 - id: session-title-llm
   disabled: true
+
+# Activate durable schedule / reminder capability and UI
+- insert:
+    - id: time-context
+      name: '@deepseek-ai/dsh-time-context'
+
+    - id: schedule
+      name: '@deepseek-ai/dsh-schedule'
+
+- id: ui-schedule
+  disabled: false

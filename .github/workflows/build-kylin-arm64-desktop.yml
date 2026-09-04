@@ -6,7 +6,7 @@ on:
       dsh_ref:
         description: Exact deepseek-ai/deepseek-harness dsh-v* tag to package
         required: true
-        default: dsh-v0.1.2-rc.1
+        default: dsh-v0.1.3-alpha.1
         type: string
 
 permissions:
