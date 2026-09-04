@@ -47,7 +47,7 @@ jobs:
             *) echo "::error::Expected packageManager=pnpm@<version>, got $package_manager"; exit 1 ;;
           esac
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: ${{ steps.toolchain.outputs.pnpm-version }}
 
