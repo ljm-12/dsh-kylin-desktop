@@ -42,10 +42,11 @@ if [[ -n "${PNPM_HOME:-}" ]]; then
   PNPM_MOUNT=(-v "$PNPM_SETUP_ROOT:$PNPM_SETUP_ROOT:ro")
 fi
 
+mkdir -p "$HOME/.cache"
 docker run --rm \
   --user "$(id -u):$(id -g)" \
   -v "$SOURCE_DIR:$SOURCE_DIR" \
-  -v "$HOME/.cache/node-gyp:$HOME/.cache/node-gyp:ro" \
+  -v "$HOME/.cache:$HOME/.cache:ro" \
   "${PNPM_MOUNT[@]}" \
   -w "$ADDON_DIR" \
   quay.io/pypa/manylinux_2_28_aarch64 \
