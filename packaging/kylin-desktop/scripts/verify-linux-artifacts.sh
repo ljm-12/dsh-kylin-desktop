@@ -75,10 +75,12 @@ grep -A1 -F -- '- id: tool-web' "$PATCH" | grep -Fq 'disabled: true'
 OFFICE_PATH="$(find "$VERIFY_ROOT/root/opt" -type d -name 'office' | head -1)"
 test -n "$OFFICE_PATH"
 test -x "$OFFICE_PATH/dsh-office"
+test -x "$OFFICE_PATH/dsh-browser"
 test -x "$OFFICE_PATH/dsh-python"
 SKILLS_PATH="$(find "$VERIFY_ROOT/root/opt" -type d -name 'skills' | head -1)"
 test -n "$SKILLS_PATH"
 test -f "$SKILLS_PATH/offline-office-documents/SKILL.md"
+test -f "$SKILLS_PATH/browser-automation/SKILL.md"
 REPLACES="$(dpkg-deb --field "$DEB" Replaces || true)"
 echo "verify-linux-artifacts: Replaces=$REPLACES"
 echo "$REPLACES" | grep -Fq 'dsh-intranet-agent'

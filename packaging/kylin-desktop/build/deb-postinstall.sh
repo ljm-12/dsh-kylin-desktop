@@ -25,16 +25,21 @@ if [ -d "/opt/dsh-intranet" ]; then
   rm -rf /opt/dsh-intranet
 fi
 
-# 4. Symlink dsh-office and dsh-python into /usr/bin/
+# 4. Symlink dsh-office, dsh-browser, and dsh-python into /usr/bin/
 OFFICE_TARGET="/opt/DeepSeek Harness Kylin/resources/office"
 if [ -f "$OFFICE_TARGET/dsh-office" ]; then
   chmod 755 "$OFFICE_TARGET/dsh-office"
   ln -sf "$OFFICE_TARGET/dsh-office" /usr/bin/dsh-office
 fi
+if [ -f "$OFFICE_TARGET/dsh-browser" ]; then
+  chmod 755 "$OFFICE_TARGET/dsh-browser"
+  ln -sf "$OFFICE_TARGET/dsh-browser" /usr/bin/dsh-browser
+fi
 if [ -f "$OFFICE_TARGET/dsh-python" ]; then
   chmod 755 "$OFFICE_TARGET/dsh-python"
   ln -sf "$OFFICE_TARGET/dsh-python" /usr/bin/dsh-python
 fi
+
 
 # 5. Refresh desktop and mime databases
 if hash update-mime-database 2>/dev/null; then

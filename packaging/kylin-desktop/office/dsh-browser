@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONNOUSERSITE=1
+
+if [ -x "$TOOL_DIR/python/bin/python3" ]; then
+  export PYTHONPATH="$TOOL_DIR/python/lib/python3.10/site-packages:${PYTHONPATH:-}"
+  exec "$TOOL_DIR/python/bin/python3" -I "$TOOL_DIR/browser_tool.py" "$@"
+elif command -v python3 >/dev/null 2>&1; then
+  exec python3 "$TOOL_DIR/browser_tool.py" "$@"
+else
+  exec python "$TOOL_DIR/browser_tool.py" "$@"
+fi

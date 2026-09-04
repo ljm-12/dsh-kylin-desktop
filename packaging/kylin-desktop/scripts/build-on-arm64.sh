@@ -87,9 +87,9 @@ if [ -d "$OFFICE_DIR/downloads" ]; then
       fi
     done
   fi
-  chmod 755 "$OFFICE_DIR/dsh-office" "$OFFICE_DIR/dsh-python"
+  chmod 755 "$OFFICE_DIR/dsh-office" "$OFFICE_DIR/dsh-browser" "$OFFICE_DIR/dsh-python"
   chmod -R 755 "$OFFICE_DIR/python/bin"
-  chmod 644 "$OFFICE_DIR/office_tool.py"
+  chmod 644 "$OFFICE_DIR/office_tool.py" "$OFFICE_DIR/browser_tool.py"
   rm -rf "$OFFICE_DIR/downloads"
 fi
 chmod 755 "$PACKAGE_ROOT/build"/deb-*.sh
