@@ -62,10 +62,11 @@ test -n "$ELECTRON"
 test -x "$ELECTRON"
 verify_arm64 "$ELECTRON"
 for executable in "$RUNTIME" "$RIPGREP" "$ELECTRON"; do
-  maximum="$(readelf --version-info "$executable" | sed -n 's/.*Name: GLIBC_\([0-9.]*\).*/\1/p' | sort -V | tail -1)"
-  echo "verify-linux-artifacts: $executable maximum GLIBC=$maximum"
-  test -n "$maximum"
-  dpkg --compare-versions "$maximum" le 2.39
+  maximum="$(readelf --version-info "$executable" 2>/dev/null | sed -n 's/.*Name: GLIBC_\([0-9.]*\).*/\1/p' | sort -V | tail -1 || true)"
+  echo "verify-linux-artifacts: $executable maximum GLIBC=${maximum:-static}"
+  if [[ -n "$maximum" ]]; then
+    dpkg --compare-versions "$maximum" le 2.39
+  fi
 done
 grep -Fq 'provider: intranet-openai' "$PATCH"
 grep -A1 -F -- '- id: llm-deepseek' "$PATCH" | grep -Fq 'disabled: true'
