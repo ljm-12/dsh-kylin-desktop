@@ -63,7 +63,7 @@ dpkg --compare-versions "$MAXIMUM_GLIBC" le 2.28
 (cd "$PACKAGE_ROOT" && corepack pnpm install --frozen-lockfile)
 (cd "$PACKAGE_ROOT" && corepack pnpm run build)
 (cd "$PACKAGE_ROOT" && corepack pnpm run test)
-(cd "$PACKAGE_ROOT" && corepack pnpm run stage-runtime -- \
+(cd "$PACKAGE_ROOT" && node lib/stage-runtime.js \
   --source-dir "$SOURCE_DIR/dist-exe" \
   --source-ref "$SOURCE_REF" \
   --source-commit "$SOURCE_COMMIT" \

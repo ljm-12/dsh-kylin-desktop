@@ -57,7 +57,10 @@ export async function stageRuntime(
 }
 
 async function main(): Promise<void> {
+  const rawArgs = process.argv.slice(2)
+  const args = rawArgs[0] === '--' ? rawArgs.slice(1) : rawArgs
   const { values } = parseArgs({
+    args,
     options: {
       'source-dir': { type: 'string' },
       'source-ref': { type: 'string' },
