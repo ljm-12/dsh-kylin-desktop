@@ -18,13 +18,16 @@ trap cleanup EXIT
 
 verify_arm64() {
   local target="$1"
-  local file_desc
-  file_desc="$(file "$target")"
-  echo "verify-linux-artifacts: file($target) -> $file_desc"
-  if echo "$file_desc" | grep -Eiq 'aarch64|arm64|arm aarch64'; then
+  local machine
+  machine="$(readelf -h "$target" 2>/dev/null | grep -i 'Machine:' || true)"
+  echo "verify-linux-artifacts: readelf($target) Machine -> $machine"
+  if echo "$machine" | grep -Eiq 'aarch64|arm'; then
     return 0
   fi
-  if readelf -h "$target" 2>/dev/null | grep -Eiq 'aarch64|arm'; then
+  local file_desc
+  file_desc="$(file "$target" 2>&1 || true)"
+  echo "verify-linux-artifacts: file($target) -> $file_desc"
+  if echo "$file_desc" | grep -Eiq 'aarch64|arm64|arm aarch64|ld-linux-aarch64'; then
     return 0
   fi
   echo "verify-linux-artifacts: binary $target is not ARM64 / aarch64!" >&2
