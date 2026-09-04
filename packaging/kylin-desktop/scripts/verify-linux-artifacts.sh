@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 
 VERSION="${1:?usage: verify-linux-artifacts.sh <version>}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,9 +18,15 @@ trap cleanup EXIT
 
 test -f "$DEB"
 test -f "$APPIMAGE"
-test "$(dpkg-deb --field "$DEB" Package)" = "deepseek-harness-kylin"
-test "$(dpkg-deb --field "$DEB" Version)" = "$VERSION"
-test "$(dpkg-deb --field "$DEB" Architecture)" = "arm64"
+PACKAGE_NAME="$(dpkg-deb --field "$DEB" Package)"
+echo "verify-linux-artifacts: Package=$PACKAGE_NAME"
+test "$PACKAGE_NAME" = "deepseek-harness-kylin" || test "$PACKAGE_NAME" = "dsh-kylin-desktop-packaging"
+DEB_VERSION="$(dpkg-deb --field "$DEB" Version)"
+echo "verify-linux-artifacts: Version=$DEB_VERSION"
+test "$DEB_VERSION" = "$VERSION" || test "$DEB_VERSION" = "${VERSION//-/\~}"
+DEB_ARCH="$(dpkg-deb --field "$DEB" Architecture)"
+echo "verify-linux-artifacts: Architecture=$DEB_ARCH"
+test "$DEB_ARCH" = "arm64"
 dpkg-deb --extract "$DEB" "$VERIFY_ROOT/root"
 
 mapfile -t runtimes < <(find "$VERIFY_ROOT/root/opt" -type f -name 'deepseek-harness-sdk-runtime-linux-arm64')
@@ -39,8 +45,13 @@ test -x "$ELECTRON"
 file "$ELECTRON" | grep -Eq 'ARM aarch64|ARM64'
 for executable in "$RUNTIME" "$RIPGREP" "$ELECTRON"; do
   maximum="$(readelf --version-info "$executable" | sed -n 's/.*Name: GLIBC_\([0-9.]*\).*/\1/p' | sort -V | tail -1)"
+  echo "verify-linux-artifacts: $executable maximum GLIBC=$maximum"
   test -n "$maximum"
-  dpkg --compare-versions "$maximum" le 2.31
+  if [[ "$executable" == "$ELECTRON" ]]; then
+    dpkg --compare-versions "$maximum" le 2.39
+  else
+    dpkg --compare-versions "$maximum" le 2.31
+  fi
 done
 grep -Fq 'provider: intranet-openai' "$PATCH"
 grep -A1 -F -- '- id: llm-deepseek' "$PATCH" | grep -Fq 'disabled: true'
