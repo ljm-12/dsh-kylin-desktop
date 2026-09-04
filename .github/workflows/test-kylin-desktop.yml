@@ -1,0 +1,50 @@
+name: Test Kylin desktop carrier
+
+on:
+  pull_request:
+    paths:
+      - packaging/kylin-desktop/**
+      - .github/workflows/build-kylin-arm64-desktop.yml
+      - .github/workflows/test-kylin-desktop.yml
+  push:
+    paths:
+      - packaging/kylin-desktop/**
+      - .github/workflows/build-kylin-arm64-desktop.yml
+      - .github/workflows/test-kylin-desktop.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-kylin-desktop-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  carrier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: packaging/kylin-desktop/pnpm-lock.yaml
+
+      - name: Install carrier dependencies
+        working-directory: packaging/kylin-desktop
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and test carrier
+        working-directory: packaging/kylin-desktop
+        run: |
+          pnpm run build
+          pnpm run test
+          bash -n scripts/build-on-arm64.sh scripts/verify-linux-artifacts.sh

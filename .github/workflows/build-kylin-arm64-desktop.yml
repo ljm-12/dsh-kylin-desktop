@@ -1,0 +1,104 @@
+name: Build Kylin ARM64 desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      dsh_ref:
+        description: Exact deepseek-ai/deepseek-harness dsh-v* tag to package
+        required: true
+        default: dsh-v0.1.2-rc.1
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-kylin-arm64-desktop-${{ inputs.dsh_ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ${{ inputs.dsh_ref }} / linux-arm64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - name: Check out Packaging Layer
+        uses: actions/checkout@v6
+        with:
+          path: packaging-source
+
+      - name: Check out exact official Harness tag
+        uses: actions/checkout@v6
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: ${{ inputs.dsh_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+          path: upstream
+
+      - name: Resolve official package manager
+        id: toolchain
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          package_manager="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).packageManager")"
+          case "$package_manager" in
+            pnpm@*) echo "pnpm-version=${package_manager#pnpm@}" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::Expected packageManager=pnpm@<version>, got $package_manager"; exit 1 ;;
+          esac
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ steps.toolchain.outputs.pnpm-version }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            upstream/pnpm-lock.yaml
+            packaging-source/packaging/kylin-desktop/pnpm-lock.yaml
+
+      - uses: actions/setup-python@v6.3.0
+        with:
+          python-version: '3.10'
+
+      - name: Enable package-manager selection by source tree
+        run: corepack enable
+
+      - name: Verify official source identity
+        id: source
+        working-directory: upstream
+        env:
+          DSH_REF: ${{ inputs.dsh_ref }}
+        run: |
+          set -euo pipefail
+          case "$DSH_REF" in
+            dsh-v*) ;;
+            *) echo "::error::dsh_ref must be an exact dsh-v* tag"; exit 1 ;;
+          esac
+          test "$(git describe --tags --exact-match)" = "$DSH_REF"
+          version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
+          test "dsh-v$version" = "$DSH_REF"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and verify the Kylin artifacts
+        env:
+          DSH_REF: ${{ inputs.dsh_ref }}
+        run: >-
+          bash packaging-source/packaging/kylin-desktop/scripts/build-on-arm64.sh
+          "$GITHUB_WORKSPACE/upstream"
+          "$DSH_REF"
+
+      - name: Upload verified artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: DeepSeek-Harness-Kylin-ARM64-${{ steps.source.outputs.version }}
+          path: |
+            packaging-source/packaging/kylin-desktop/dist/*.deb
+            packaging-source/packaging/kylin-desktop/dist/*.AppImage
+            packaging-source/packaging/kylin-desktop/dist/SHA256SUMS
+            packaging-source/packaging/kylin-desktop/dist/BUILD-INFO.json
+          if-no-files-found: error
+          retention-days: 14

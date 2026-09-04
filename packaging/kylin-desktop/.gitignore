@@ -1,0 +1,5 @@
+lib/
+runtime/
+dist/
+node_modules/
+*.tsbuildinfo
