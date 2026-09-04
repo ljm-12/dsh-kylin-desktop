@@ -11,10 +11,14 @@ describe('Kylin package configuration', () => {
     expect(config.extraResources).toEqual([
       { from: 'runtime', to: 'runtime' },
       { from: 'config', to: 'config' },
+      { from: 'office', to: 'office' },
+      { from: 'skills', to: 'skills' },
     ])
     expect(config.linux?.target).toEqual([
       { target: 'deb', arch: ['arm64'] },
       { target: 'AppImage', arch: ['arm64'] },
     ])
+    expect(config.deb?.fpm).toContain('--deb-replaces')
+    expect(config.deb?.fpm).toContain('dsh-intranet-agent')
   })
 })

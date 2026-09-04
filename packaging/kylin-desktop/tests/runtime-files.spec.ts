@@ -22,6 +22,8 @@ describe('Runtime files', () => {
       executable: join('/resources', 'runtime', 'deepseek-harness-sdk-runtime-linux-arm64'),
       ripgrep: join('/resources', 'runtime', 'deepseek-harness-sdk-runtime-linux-arm64-rg'),
       patch: join('/resources', 'config', 'intranet.cordis.patch.yml'),
+      skills: join('/resources', 'skills'),
+      office: join('/resources', 'office'),
     })
     const override = resolveRuntimeFiles('/resources', './runtime-fixture')
     expect(override.ripgrep).toBe(`${override.executable}-rg`)

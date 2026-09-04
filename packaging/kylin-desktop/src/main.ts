@@ -61,11 +61,20 @@ async function boot(): Promise<void> {
     log.write(`${new Date().toISOString()} ${stream}: ${line}\n`)
   }
 
+  const runtimeEnv = createRuntimeEnvironment(process.env, dshHome)
+  if (existsSync(files.skills)) {
+    runtimeEnv.DSH_BUNDLED_SKILL_DIR = files.skills
+  }
+  if (existsSync(files.office)) {
+    const currentPath = runtimeEnv.PATH ?? process.env.PATH ?? ''
+    runtimeEnv.PATH = `${files.office}:${currentPath}`
+  }
+
   const owned = new RuntimeProcess({
     command: files.executable,
     args: ['--profile', 'web', '--patch', files.patch, '--no-open', '--port', '0'],
     cwd: workspace,
-    env: createRuntimeEnvironment(process.env, dshHome),
+    env: runtimeEnv,
     readyTimeoutMs: READY_TIMEOUT_MS,
     shutdownTimeoutMs: SHUTDOWN_TIMEOUT_MS,
     onLine: writeLog,

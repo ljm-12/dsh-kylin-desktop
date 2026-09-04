@@ -28,6 +28,8 @@ export function packageConfiguration(version: string): Configuration {
     extraResources: [
       { from: 'runtime', to: 'runtime' },
       { from: 'config', to: 'config' },
+      { from: 'office', to: 'office' },
+      { from: 'skills', to: 'skills' },
     ],
     artifactName: `DeepSeek-Harness-Kylin-ARM64-${version}.\${ext}`,
     linux: {
@@ -46,6 +48,13 @@ export function packageConfiguration(version: string): Configuration {
       packageName: 'deepseek-harness-kylin',
       priority: 'optional',
       depends: ['libgtk-3-0', 'libnss3', 'libasound2', 'libxss1', 'libxtst6', 'xdg-utils'],
+      fpm: [
+        '--deb-replaces', 'dsh-intranet-agent',
+        '--deb-conflicts', 'dsh-intranet-agent',
+        '--deb-provides', 'dsh-intranet-agent',
+        '--after-install', 'build/deb-postinstall.sh',
+        '--before-install', 'build/deb-preinstall.sh',
+      ],
     },
   }
 }

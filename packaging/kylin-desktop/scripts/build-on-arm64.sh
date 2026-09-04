@@ -68,6 +68,32 @@ dpkg --compare-versions "$MAXIMUM_GLIBC" le 2.28
   --source-ref "$SOURCE_REF" \
   --source-commit "$SOURCE_COMMIT" \
   --repository-version "$VERSION")
+
+OFFICE_DIR="$PACKAGE_ROOT/office"
+if [ -d "$OFFICE_DIR/downloads" ]; then
+  echo "build-on-arm64: staging offline Office runtime..."
+  mkdir -p "$OFFICE_DIR/python"
+  tar -xzf "$OFFICE_DIR/downloads"/cpython-*.tar.gz -C "$OFFICE_DIR"
+  SITE_PACKAGES="$OFFICE_DIR/python/lib/python3.10/site-packages"
+  mkdir -p "$SITE_PACKAGES"
+  for wheel in "$OFFICE_DIR/downloads/wheels-arm64"/*.whl; do
+    python3 -m zipfile -e "$wheel" "$SITE_PACKAGES"
+  done
+  if python3 -m pip --version >/dev/null 2>&1; then
+    python3 -m pip download --dest "$OFFICE_DIR/downloads/wheels-arm64" --only-binary=:all: --no-deps pypdf || true
+    for pypdf_wheel in "$OFFICE_DIR/downloads/wheels-arm64"/pypdf*.whl; do
+      if [ -f "$pypdf_wheel" ]; then
+        python3 -m zipfile -e "$pypdf_wheel" "$SITE_PACKAGES"
+      fi
+    done
+  fi
+  chmod 755 "$OFFICE_DIR/dsh-office" "$OFFICE_DIR/dsh-python"
+  chmod -R 755 "$OFFICE_DIR/python/bin"
+  chmod 644 "$OFFICE_DIR/office_tool.py"
+  rm -rf "$OFFICE_DIR/downloads"
+fi
+chmod 755 "$PACKAGE_ROOT/build"/deb-*.sh
+
 (cd "$PACKAGE_ROOT" && corepack pnpm run smoke-runtime)
 (cd "$PACKAGE_ROOT" && corepack pnpm run dist)
 (cd "$PACKAGE_ROOT" && bash scripts/verify-linux-artifacts.sh "$VERSION")

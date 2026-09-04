@@ -10,6 +10,8 @@ export interface RuntimeFiles {
   executable: string
   ripgrep: string
   patch: string
+  skills: string
+  office: string
 }
 
 /** Resolve packaged Runtime files, with an explicit development override. */
@@ -21,6 +23,8 @@ export function resolveRuntimeFiles(resourcesPath: string, runtimeOverride?: str
     executable,
     ripgrep: `${executable}-rg`,
     patch: join(resourcesPath, 'config', 'intranet.cordis.patch.yml'),
+    skills: join(resourcesPath, 'skills'),
+    office: join(resourcesPath, 'office'),
   }
 }
 
