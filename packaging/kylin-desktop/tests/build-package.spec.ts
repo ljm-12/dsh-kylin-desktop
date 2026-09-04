@@ -18,7 +18,8 @@ describe('Kylin package configuration', () => {
       { target: 'deb', arch: ['arm64'] },
       { target: 'AppImage', arch: ['arm64'] },
     ])
-    expect(config.deb?.fpm).toContain('--deb-replaces')
+    expect(config.deb?.fpm).toContain('--replaces')
     expect(config.deb?.fpm).toContain('dsh-intranet-agent')
+    expect(config.deb?.afterInstall).toBe('build/deb-postinstall.sh')
   })
 })
