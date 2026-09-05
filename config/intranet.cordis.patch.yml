@@ -1,0 +1,56 @@
+# Kylin desktop deployment policy: local model configuration stays editable in
+# Settings > Models while public provider, search, feedback, and telemetry rows
+# remain unavailable.
+- id: agent-default-model
+  config:
+    provider: intranet-openai
+    model: local-model
+
+- id: llm-pi-ai
+  config:
+    providers:
+      intranet-openai:
+        displayName: 内网 OpenAI 兼容服务
+        apiKeyEnv: INTRANET_AGENT_API_KEY
+        api: openai-completions
+        baseURL: http://127.0.0.1:8000/v1
+        models:
+          - id: local-model
+            name: local-model
+            contextWindow: 131072
+            maxTokens: 8192
+
+- id: llm-deepseek
+  disabled: true
+
+- id: web-search-deepseek
+  disabled: true
+
+- id: tool-web
+  disabled: true
+
+- id: command-feedback
+  disabled: true
+
+- id: message-feedback
+  disabled: true
+
+- id: ui-message-feedback
+  disabled: true
+
+- id: session-telemetry-otel
+  disabled: true
+
+- id: session-title-llm
+  disabled: true
+
+# Activate durable schedule / reminder capability and UI
+- insert:
+    - id: time-context
+      name: '@deepseek-ai/dsh-time-context'
+
+    - id: schedule
+      name: '@deepseek-ai/dsh-schedule'
+
+- id: ui-schedule
+  disabled: false
