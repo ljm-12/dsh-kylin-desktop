@@ -11,7 +11,7 @@ describe('Kylin package configuration', () => {
     expect(config.extraResources).toEqual([
       { from: 'runtime', to: 'runtime' },
       { from: 'config', to: 'config' },
-      { from: 'office', to: 'office' },
+      { from: 'staging/office', to: 'office' },
       { from: 'skills', to: 'skills' },
     ])
     expect(config.linux?.target).toEqual([

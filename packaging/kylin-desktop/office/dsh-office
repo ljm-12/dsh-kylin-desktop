@@ -2,5 +2,10 @@
 set -euo pipefail
 OFFICE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PYTHONNOUSERSITE=1
-export PYTHONPATH="$OFFICE_DIR/python/lib/python3.10/site-packages:${PYTHONPATH:-}"
+for py_lib in "$OFFICE_DIR"/python/lib/python3.*; do
+  if [ -d "$py_lib/site-packages" ]; then
+    export PYTHONPATH="$py_lib/site-packages:${PYTHONPATH:-}"
+    break
+  fi
+done
 exec "$OFFICE_DIR/python/bin/python3" -I "$OFFICE_DIR/office_tool.py" "$@"

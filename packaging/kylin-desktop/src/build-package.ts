@@ -28,7 +28,7 @@ export function packageConfiguration(version: string): Configuration {
     extraResources: [
       { from: 'runtime', to: 'runtime' },
       { from: 'config', to: 'config' },
-      { from: 'office', to: 'office' },
+      { from: 'staging/office', to: 'office' },
       { from: 'skills', to: 'skills' },
     ],
     artifactName: `DeepSeek-Harness-Kylin-ARM64-${version}.\${ext}`,

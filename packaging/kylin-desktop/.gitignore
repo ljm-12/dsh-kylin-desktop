@@ -1,5 +1,7 @@
 lib/
 runtime/
+staging/
+office/python/
 dist/
 node_modules/
 *.tsbuildinfo

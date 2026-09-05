@@ -19,7 +19,7 @@ Open the `Build Kylin ARM64 desktop` workflow and enter the official tag to pack
 Without a remote workflow, copy this repository and a clean checkout of the official tag to a Linux ARM64 build machine, then run:
 
 ```sh
-bash scripts/build-on-arm64.sh /path/to/official/deepseek-harness dsh-v0.1.2-rc.1
+bash scripts/build-on-arm64.sh /path/to/official/deepseek-harness dsh-v0.1.3-alpha.1
 ```
 
 The script refuses a non-ARM64 host, a branch or moving ref, a tag/version mismatch, and a package-manager version mismatch before it runs build code.

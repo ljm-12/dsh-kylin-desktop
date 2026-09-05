@@ -19,7 +19,7 @@ Electron `43.4.0`、electron-builder `26.15.7`、TypeScript 和测试由本目�
 不使用远端工作流时，把本仓库和官方标签的干净 checkout 复制到 Linux ARM64 构建机，然后执行：
 
 ```sh
-bash scripts/build-on-arm64.sh /path/to/official/deepseek-harness dsh-v0.1.2-rc.1
+bash scripts/build-on-arm64.sh /path/to/official/deepseek-harness dsh-v0.1.3-alpha.1
 ```
 
 脚本在运行构建代码前会拒绝非 ARM64 主机、分支或移动引用、标签与版本不匹配以及包管理器版本不匹配。
