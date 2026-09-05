@@ -9,9 +9,6 @@ updates:
       timezone: "Asia/Shanghai"
     cooldown:
       default-days: 30
-    labels:
-      - "kind/dependency"
-      - "area/infra"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -21,6 +18,3 @@ updates:
       timezone: "Asia/Shanghai"
     cooldown:
       default-days: 30
-    labels:
-      - "kind/dependency"
-      - "area/infra"

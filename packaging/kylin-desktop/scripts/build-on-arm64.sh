@@ -79,6 +79,8 @@ if [ -d "$OFFICE_SRC/downloads" ]; then
   cp "$OFFICE_SRC/office_tool.py" "$OFFICE_SRC/browser_tool.py" "$OFFICE_STAGING/"
   tar -xzf "$OFFICE_SRC/downloads"/cpython-*.tar.gz -C "$OFFICE_STAGING"
   PY_LIB_DIR="$(find "$OFFICE_STAGING/python/lib" -maxdepth 1 -type d -name 'python3.*' | head -1)"
+  test -n "$PY_LIB_DIR" || { echo "build-on-arm64: cannot find python3.* directory in extracted CPython" >&2; exit 1; }
+  test -d "$PY_LIB_DIR" || { echo "build-on-arm64: PY_LIB_DIR is not a directory: $PY_LIB_DIR" >&2; exit 1; }
   SITE_PACKAGES="$PY_LIB_DIR/site-packages"
   mkdir -p "$SITE_PACKAGES"
   for wheel in "$OFFICE_SRC/downloads/wheels-arm64"/*.whl; do
