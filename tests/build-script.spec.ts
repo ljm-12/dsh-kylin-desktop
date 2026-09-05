@@ -13,4 +13,9 @@ describe('Native ARM64 build script', () => {
     expect(script).toContain('pnpm run smoke-runtime')
     expect(script).toContain('verify-linux-artifacts.sh "$VERSION"')
   })
+
+  it('enforces required offline Office assets in early preflight and stages them unconditionally', () => {
+    expect(script).toContain('test -d "$OFFICE_SRC/downloads"')
+    expect(script).not.toContain('if [ -d "$OFFICE_SRC/downloads" ]; then')
+  })
 })

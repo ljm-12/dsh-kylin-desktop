@@ -1,6 +1,5 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write packaging/kylin-desktop/README.md
-README.md: 025123361b87e277b3c29c99a13b0613e87f4860
-README.zh.md: 810ad6986852e0142a1d284b31dba370f80fc8c1
+# 双语 README 一致性记录：两侧在最后一次确认一致状态下的 git blob hash。
+# 两种语言同等权威；修改任一侧后，需同步更新另一侧，然后重新记录：
+#   git hash-object README.md README.zh.md
+README.md: f5d25fb673047aa21dc93af11bcfea5c6e31aec5
+README.zh.md: 435a8116fcdf8b9c6b418acf04bdc3b6fc99e636

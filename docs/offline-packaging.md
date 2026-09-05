@@ -7,20 +7,23 @@
 
 ---
 
-## 核心定制组件 (`packaging/kylin-desktop/`)
+## 核心定制组件（仓库根目录即打包工程）
 
-所有内网定制内容集中在 `packaging/kylin-desktop/` 目录下，解耦并叠加于官方上游版本之上：
+本仓库是独立打包仓库（Overlay Carrier），仓库根目录即打包工程，所有内网定制内容直接位于根目录之下，构建时叠加于官方上游 Runtime 之上：
 
-1. **离线 CPython 3.10 Office 套件**：
-   - 包含独立解压的 ARM64 CPython 3.10 运行时及 `pypdf`, `python-docx`, `openpyxl`, `python-pptx` 等离线 wheels 依赖。
-   - 提供 `dsh-office` 与 `dsh-python` 命令入口与 `office_tool.py` 自动化处理脚本。
-2. **CDP 浏览器自动化工具 (`dsh-browser`)**：
-   - 内置轻量 CDP 浏览器控制脚本 `browser_tool.py`，支持离线或内网 Chromium 自动化操作。
-   - 随附 `browser-automation` 与 `offline-office-documents` skills 说明。
-3. **内网策略配置补丁 (`intranet.cordis.patch.yml`)**：
+1. **Electron 桌面外壳（`src/`）**：
+   - TypeScript 主进程源码，负责 Runtime 进程生命周期、就绪检测、日志脱敏与窗口安全策略；编译产物位于 `lib/`（不入库）。
+2. **内网策略配置补丁（`config/intranet.cordis.patch.yml`）**：
    - 禁用公网 DeepSeek 路由与遥测插件，启用 `intranet-openai` 兼容路由与本地模型接入策略。
-4. **Debian 软件包生命周期钩子**：
-   - `deb-preinstall.sh`、`deb-postinstall.sh`、`deb-postrm.sh`，用于平替兼容旧版 `dsh-intranet-agent` 并完成清理与配置升级。
+3. **Debian 软件包生命周期钩子（`build/`）**：
+   - `deb-preinstall.sh`、`deb-postinstall.sh`、`deb-postrm.sh`，用于平替兼容旧版 `dsh-intranet-agent` 并完成清理与配置升级；`icon.png` 为桌面应用图标。
+4. **离线 CPython 3.10 Office 套件（`office/`）**：
+   - `downloads/` 内置 ARM64 CPython 3.10 运行时压缩包及 `pypdf`、`python-docx`、`openpyxl`、`python-pptx` 等离线 wheels 依赖。
+   - 提供 `dsh-office`、`dsh-python` 命令入口与 `office_tool.py` 自动化处理脚本。
+5. **CDP 浏览器自动化工具（`office/dsh-browser`）**：
+   - 内置轻量 CDP 浏览器控制脚本 `browser_tool.py`，支持离线或内网 Chromium 自动化操作。
+6. **随包技能（`skills/`）**：
+   - `browser-automation`（浏览器自动化）与 `offline-office-documents`（离线文档处理）两个技能包，由 Electron 启动时注入 Runtime。
 
 ---
 

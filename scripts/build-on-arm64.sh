@@ -5,6 +5,7 @@ SOURCE_DIR="${1:?usage: build-on-arm64.sh <official-source-dir> <dsh-v-tag>}"
 SOURCE_REF="${2:?usage: build-on-arm64.sh <official-source-dir> <dsh-v-tag>}"
 PACKAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_DIR="$(cd "$SOURCE_DIR" && pwd)"
+OFFICE_SRC="$PACKAGE_ROOT/office"
 
 case "$(uname -m)" in
   aarch64|arm64) ;;
@@ -15,12 +16,17 @@ case "$SOURCE_REF" in
   *) echo "build-on-arm64: source ref must be an exact dsh-v* tag." >&2; exit 1 ;;
 esac
 
-for command_name in git node corepack docker file readelf dpkg-deb sha256sum; do
+for command_name in git node corepack docker file readelf dpkg-deb sha256sum python3; do
   command -v "$command_name" >/dev/null 2>&1 || {
     echo "build-on-arm64: $command_name is required." >&2
     exit 1
   }
 done
+
+test -d "$OFFICE_SRC/downloads" || {
+  echo "build-on-arm64: offline Office assets ($OFFICE_SRC/downloads) are required." >&2
+  exit 1
+}
 
 test "$(git -C "$SOURCE_DIR" describe --tags --exact-match)" = "$SOURCE_REF"
 VERSION="$(cd "$SOURCE_DIR" && node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
@@ -69,29 +75,26 @@ dpkg --compare-versions "$MAXIMUM_GLIBC" le 2.28
   --source-commit "$SOURCE_COMMIT" \
   --repository-version "$VERSION")
 
-OFFICE_SRC="$PACKAGE_ROOT/office"
 OFFICE_STAGING="$PACKAGE_ROOT/staging/office"
-if [ -d "$OFFICE_SRC/downloads" ]; then
-  echo "build-on-arm64: staging offline Office runtime..."
-  rm -rf "$OFFICE_STAGING"
-  mkdir -p "$OFFICE_STAGING"
-  cp "$OFFICE_SRC/dsh-office" "$OFFICE_SRC/dsh-browser" "$OFFICE_SRC/dsh-python" "$OFFICE_STAGING/"
-  cp "$OFFICE_SRC/office_tool.py" "$OFFICE_SRC/browser_tool.py" "$OFFICE_STAGING/"
-  tar -xzf "$OFFICE_SRC/downloads"/cpython-*.tar.gz -C "$OFFICE_STAGING"
-  PY_LIB_DIR="$(find "$OFFICE_STAGING/python/lib" -maxdepth 1 -type d -name 'python3.*' | head -1)"
-  test -n "$PY_LIB_DIR" || { echo "build-on-arm64: cannot find python3.* directory in extracted CPython" >&2; exit 1; }
-  test -d "$PY_LIB_DIR" || { echo "build-on-arm64: PY_LIB_DIR is not a directory: $PY_LIB_DIR" >&2; exit 1; }
-  SITE_PACKAGES="$PY_LIB_DIR/site-packages"
-  mkdir -p "$SITE_PACKAGES"
-  for wheel in "$OFFICE_SRC/downloads/wheels-arm64"/*.whl; do
-    python3 -m zipfile -e "$wheel" "$SITE_PACKAGES"
-  done
-  chmod 755 "$OFFICE_STAGING/dsh-office" "$OFFICE_STAGING/dsh-browser" "$OFFICE_STAGING/dsh-python"
-  chmod -R 755 "$OFFICE_STAGING/python/bin"
-  chmod 644 "$OFFICE_STAGING/office_tool.py" "$OFFICE_STAGING/browser_tool.py"
-  "$OFFICE_STAGING/dsh-python" -c "import pypdf, docx, openpyxl, pptx, lxml, PIL; print('build-on-arm64: office runtime imports verified')"
-  "$OFFICE_STAGING/dsh-office" --help >/dev/null
-fi
+echo "build-on-arm64: staging offline Office runtime..."
+rm -rf "$OFFICE_STAGING"
+mkdir -p "$OFFICE_STAGING"
+cp "$OFFICE_SRC/dsh-office" "$OFFICE_SRC/dsh-browser" "$OFFICE_SRC/dsh-python" "$OFFICE_STAGING/"
+cp "$OFFICE_SRC/office_tool.py" "$OFFICE_SRC/browser_tool.py" "$OFFICE_STAGING/"
+tar -xzf "$OFFICE_SRC/downloads"/cpython-*.tar.gz -C "$OFFICE_STAGING"
+PY_LIB_DIR="$(find "$OFFICE_STAGING/python/lib" -maxdepth 1 -type d -name 'python3.*' | head -1)"
+test -n "$PY_LIB_DIR" || { echo "build-on-arm64: cannot find python3.* directory in extracted CPython" >&2; exit 1; }
+test -d "$PY_LIB_DIR" || { echo "build-on-arm64: PY_LIB_DIR is not a directory: $PY_LIB_DIR" >&2; exit 1; }
+SITE_PACKAGES="$PY_LIB_DIR/site-packages"
+mkdir -p "$SITE_PACKAGES"
+for wheel in "$OFFICE_SRC/downloads/wheels-arm64"/*.whl; do
+  python3 -m zipfile -e "$wheel" "$SITE_PACKAGES"
+done
+chmod 755 "$OFFICE_STAGING/dsh-office" "$OFFICE_STAGING/dsh-browser" "$OFFICE_STAGING/dsh-python"
+chmod -R 755 "$OFFICE_STAGING/python/bin"
+chmod 644 "$OFFICE_STAGING/office_tool.py" "$OFFICE_STAGING/browser_tool.py"
+"$OFFICE_STAGING/dsh-python" -c "import pypdf, docx, openpyxl, pptx, lxml, PIL; print('build-on-arm64: office runtime imports verified')"
+"$OFFICE_STAGING/dsh-office" --help >/dev/null
 chmod 755 "$PACKAGE_ROOT/build"/deb-*.sh
 
 (cd "$PACKAGE_ROOT" && corepack pnpm run smoke-runtime)
