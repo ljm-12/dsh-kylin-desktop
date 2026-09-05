@@ -20,7 +20,8 @@ describe('Kylin native build workflow', () => {
     expect(buildWorkflow).toContain('scripts/build-on-arm64.sh')
   })
 
-  it('runs quality gates on carrier tests and all shell scripts including deb hooks', () => {
-    expect(testWorkflow).toContain('bash -n scripts/*.sh build/*.sh')
+  it('runs quality gates on carrier tests, shell scripts, and python tools', () => {
+    expect(testWorkflow).toContain('bash -n scripts/*.sh build/*.sh office/dsh-office office/dsh-browser office/dsh-python')
+    expect(testWorkflow).toContain('python3 -m py_compile office/office_tool.py office/browser_tool.py')
   })
 })

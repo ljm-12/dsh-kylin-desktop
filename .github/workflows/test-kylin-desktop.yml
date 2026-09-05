@@ -39,4 +39,5 @@ jobs:
         run: |
           pnpm run build
           pnpm run test
-          bash -n scripts/*.sh build/*.sh
+          bash -n scripts/*.sh build/*.sh office/dsh-office office/dsh-browser office/dsh-python
+          python3 -m py_compile office/office_tool.py office/browser_tool.py
