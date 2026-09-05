@@ -17,7 +17,7 @@
     "dist": "pnpm run build && node lib/build-package.js"
   },
   "devDependencies": {
-    "@types/node": "22.20.0",
+    "@types/node": "26.1.2",
     "electron": "43.4.0",
     "electron-builder": "26.15.7",
     "typescript": "6.0.3",
