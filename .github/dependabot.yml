@@ -2,7 +2,7 @@ version: 2
 
 updates:
   - package-ecosystem: "npm"
-    directory: "/packaging/kylin-desktop"
+    directory: "/"
     schedule:
       interval: "cron"
       cronjob: "0 4 * * *"

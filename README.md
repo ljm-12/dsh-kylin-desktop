@@ -1,63 +1,76 @@
-# DeepSeek Harness
+# Kylin ARM64 desktop packaging
 
 English | [中文](README.zh.md)
 
-DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
+This project packages an exact official DeepSeek Harness tag as a Kylin ARM64 desktop application without importing a community desktop fork. A small Electron process starts the official single-file Runtime with its `web` profile and loads the authenticated loopback URL in a locked-down window.
 
-It is built on an **everything-is-a-plugin** architecture and powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512).
+## Build inputs
 
-Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
+The GitHub workflow accepts one exact `dsh-v*` tag. It checks that the tag matches the official repository version and records the resolved commit in `BUILD-INFO.json`.
 
-## Developer preview
+The build runs on `ubuntu-24.04-arm`. It follows the official Runtime workflow, including the manylinux 2.28 `node-pty` rebuild, and packages the resulting ARM64 executable with its required `-rg` sidecar.
 
-DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
+Electron `43.4.0`, electron-builder `26.15.7`, TypeScript, and the tests are pinned by this directory's independent `pnpm-lock.yaml`. The target application does not include `electron-updater`.
 
-Review the [safety notice](SAFETY.md) before running the project.
+## Run the build
 
-## Run
+Open the `Build Kylin ARM64 desktop` workflow and enter the official tag to package. The workflow emits one artifact containing the `.deb`, AppImage, `SHA256SUMS`, and `BUILD-INFO.json` files.
 
-### Run from `npm`
-
-Install `Node.js`, then run:
+Without a remote workflow, copy this repository and a clean checkout of the official tag to a Linux ARM64 build machine, then run:
 
 ```sh
-npx @deepseek-ai/dsh web
+bash scripts/build-on-arm64.sh /path/to/official/deepseek-harness dsh-v0.1.3-alpha.1
 ```
 
-The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See [Web UI guide](docs/user/guide/index.md).
+The script refuses a non-ARM64 host, a branch or moving ref, a tag/version mismatch, and a package-manager version mismatch before it runs build code.
 
-### Run from source
-
-To run from a repository checkout:
+The build workflow owns the native Runtime and Electron packaging operation. The local commands below verify the carrier without claiming an ARM64 package from a non-ARM64 host.
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
-cd deepseek-harness
-pnpm install
+pnpm install --frozen-lockfile
 pnpm run build
-pnpm dsh web
+pnpm run test
 ```
 
-`pnpm run build` prepares the repository artifacts. `pnpm dsh web` uses those built artifacts without rebuilding.
+## Runtime lifecycle
 
-## Community and support
+The Electron process starts the bundled Runtime with:
 
-- Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
-- Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
-- Join <a href="https://discord.gg/Ycq5dCaS4">DeepSeek Harness Discord community</a>.
+```text
+--profile web --patch <intranet-policy> --no-open --port 0
+```
 
-## Contributing
+Port `0` delegates allocation to the operating system. The window opens only after a complete authenticated `dsh web:` readiness line names an HTTP URL on `127.0.0.1`; any other address is rejected.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+The window disables Node integration, enables context isolation and sandboxing, blocks new windows, and prevents navigation outside the Runtime origin. Runtime output is written to the user-data log after one-time URL tokens are redacted.
 
-## Development
+Closing Electron sends `SIGTERM`, waits for the Runtime to exit, and uses `SIGKILL` only after the bounded shutdown interval. An unexpected Runtime exit is reported to the user.
 
-Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
+## Intranet policy and migration
 
-For agents, follow [AGENTS.md](AGENTS.md).
+[`config/intranet.cordis.patch.yml`](config/intranet.cordis.patch.yml) disables the public DeepSeek route, model-visible Web tool, DeepSeek search, host and UI feedback plugins, and telemetry. It supplies an editable `intranet-openai` OpenAI-compatible route whose initial endpoint is `http://127.0.0.1:8000/v1`.
 
-## License
+Users configure the real intranet endpoint, model list, and credential in Settings > Models. Credentials remain in the Harness credential store and never enter the package or build metadata.
 
-[MIT](LICENSE)
+Note for migrations from legacy `dsh-intranet-agent`: the desktop security boundary scrubs sensitive environment variables (such as `*_API_KEY` and `*_SECRET`) before spawning the Runtime. Exporting `INTRANET_AGENT_API_KEY` in the shell is deliberately ignored. Configure API credentials in Settings > Models so they are stored safely in the Harness credential store.
 
-Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+## Verification boundaries
+
+The local tests cover readiness parsing across output chunks, token redaction, environment scrubbing, early and unexpected exits, quiescent child shutdown, ARM64 ELF recognition, and package configuration.
+
+The ARM64 workflow additionally checks source identity, the Runtime build, its authenticated Web root, Debian metadata, executable architecture and modes, packaged policy, AppImage architecture, and checksums.
+
+A successful workflow does not prove the graphical application on Kylin. Release approval still requires installation, launch, model configuration, one conversation, one tool call, restart, and upgrade testing on the supported Kylin ARM64 image.
+
+## Build outputs
+
+The verified files use these names:
+
+```text
+DeepSeek-Harness-Kylin-ARM64-<version>.deb
+DeepSeek-Harness-Kylin-ARM64-<version>.AppImage
+SHA256SUMS
+BUILD-INFO.json
+```
+
+The `.deb` is the primary Kylin artifact. AppImage is supplemental because its runtime requirements, including FUSE on some systems, vary across target images.

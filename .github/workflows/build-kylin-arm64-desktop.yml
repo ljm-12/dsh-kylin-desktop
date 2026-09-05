@@ -57,7 +57,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: |
             upstream/pnpm-lock.yaml
-            packaging-source/packaging/kylin-desktop/pnpm-lock.yaml
+            packaging-source/pnpm-lock.yaml
 
       - uses: actions/setup-python@v6.3.0
         with:
@@ -87,7 +87,7 @@ jobs:
         env:
           DSH_REF: ${{ inputs.dsh_ref }}
         run: >-
-          bash packaging-source/packaging/kylin-desktop/scripts/build-on-arm64.sh
+          bash packaging-source/scripts/build-on-arm64.sh
           "$GITHUB_WORKSPACE/upstream"
           "$DSH_REF"
 
@@ -96,9 +96,9 @@ jobs:
         with:
           name: DeepSeek-Harness-Kylin-ARM64-${{ steps.source.outputs.version }}
           path: |
-            packaging-source/packaging/kylin-desktop/dist/*.deb
-            packaging-source/packaging/kylin-desktop/dist/*.AppImage
-            packaging-source/packaging/kylin-desktop/dist/SHA256SUMS
-            packaging-source/packaging/kylin-desktop/dist/BUILD-INFO.json
+            packaging-source/dist/*.deb
+            packaging-source/dist/*.AppImage
+            packaging-source/dist/SHA256SUMS
+            packaging-source/dist/BUILD-INFO.json
           if-no-files-found: error
           retention-days: 14

@@ -1,7 +1,0 @@
-packages:
-  - .
-
-allowBuilds:
-  electron: true
-  # Windows Squirrel packaging is not used by this Linux ARM64 project.
-  electron-winstaller: false

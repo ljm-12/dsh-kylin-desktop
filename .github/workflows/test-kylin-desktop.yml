@@ -2,15 +2,9 @@ name: Test Kylin desktop carrier
 
 on:
   pull_request:
-    paths:
-      - packaging/kylin-desktop/**
-      - .github/workflows/build-kylin-arm64-desktop.yml
-      - .github/workflows/test-kylin-desktop.yml
   push:
-    paths:
-      - packaging/kylin-desktop/**
-      - .github/workflows/build-kylin-arm64-desktop.yml
-      - .github/workflows/test-kylin-desktop.yml
+    branches:
+      - master
 
 permissions:
   contents: read
@@ -36,14 +30,12 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: packaging/kylin-desktop/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install carrier dependencies
-        working-directory: packaging/kylin-desktop
         run: pnpm install --frozen-lockfile
 
       - name: Build and test carrier
-        working-directory: packaging/kylin-desktop
         run: |
           pnpm run build
           pnpm run test

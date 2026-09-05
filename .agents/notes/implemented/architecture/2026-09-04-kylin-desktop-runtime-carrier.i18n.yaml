@@ -1,6 +1,0 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-04-kylin-desktop-runtime-carrier.md
-2026-09-04-kylin-desktop-runtime-carrier.md: 46dc21644b4fb4aa561ac892184e529feac49794
-2026-09-04-kylin-desktop-runtime-carrier.zh.md: e6d56e00ac0fc966d01ed419a072a40824022b38
