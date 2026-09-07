@@ -41,7 +41,7 @@ const replacement1 = `  // Resolution is entry-local: the same specifier can res
    * is probed by calling with the v1 argument order, which the v2 signature
    * rejects (discussions #4885, #4968, #4955).
    */
-  private resolveLoaderShape(internal: any): 'v1' | 'v2' {
+  private resolveLoaderShape(internal: NonNullable<Context['loader']['internal']>): 'v1' | 'v2' {
     if (this.loaderShape !== undefined) return this.loaderShape
     const shape: 'v1' | 'v2' = 'getOrCreateModuleJob' in internal
       ? 'v2'
@@ -52,9 +52,9 @@ const replacement1 = `  // Resolution is entry-local: the same specifier can res
     return shape
   }
 
-  private probeLoaderShape(internal: any): 'v1' | 'v2' {
+  private probeLoaderShape(internal: NonNullable<Context['loader']['internal']>): 'v1' | 'v2' {
     try {
-      internal.resolveSync('node:os', 'file:///probe', {})
+      ;(internal as any).resolveSync('node:os', 'file:///probe', {})
       return 'v1'
     } catch {
       return 'v2'
@@ -139,8 +139,10 @@ const replacement3 = `    const { packageName, path: pkgPath } = located
     let targetManifestPath = pkgPath
     let pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     let dsh = pkg.dsh
-    const moduleFallbackTarget = (dsh && typeof dsh === 'object' && (dsh as Record<string, unknown>).moduleFallback && typeof (dsh as Record<string, unknown>).moduleFallback === 'object')
-      ? ((dsh as Record<string, unknown>).moduleFallback as Record<string, unknown>)?.targets?.['.']
+    const dshObj = dsh as Record<string, any> | undefined
+    const moduleFallbackTargets = dshObj?.moduleFallback?.targets as Record<string, any> | undefined
+    const moduleFallbackTarget = typeof moduleFallbackTargets?.['.'] === 'string'
+      ? (moduleFallbackTargets['.'] as string)
       : undefined
     if (typeof moduleFallbackTarget === 'string') {
       const fallbackUrl = moduleFallbackTarget.startsWith('file:') ? moduleFallbackTarget : pathToFileURL(moduleFallbackTarget).href

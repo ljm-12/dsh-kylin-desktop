@@ -108,7 +108,7 @@ describe('Upstream client modules patcher', () => {
 
     // 1. Loader shape probe
     expect(patched).toContain('private loaderShape: \'v1\' | \'v2\' | undefined')
-    expect(patched).toContain('private resolveLoaderShape(internal: any): \'v1\' | \'v2\'')
+    expect(patched).toContain('private resolveLoaderShape(internal: NonNullable<Context[\'loader\'][\'internal\']>): \'v1\' | \'v2\'')
     expect(patched).toContain('getOrCreateModuleJob')
 
     // 2. Dual fallback and warning in locatePkgJson
