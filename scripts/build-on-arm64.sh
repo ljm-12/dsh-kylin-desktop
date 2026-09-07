@@ -64,6 +64,7 @@ MAXIMUM_GLIBC="$(readelf --version-info "$ADDON" | sed -n 's/.*Name: GLIBC_\([0-
 test -n "$MAXIMUM_GLIBC"
 dpkg --compare-versions "$MAXIMUM_GLIBC" le 2.28
 
+node "$PACKAGE_ROOT/scripts/patch-upstream-client-modules.mjs" "$SOURCE_DIR"
 (cd "$SOURCE_DIR" && DSH_BUILD_CLIENT_PROFILE=official corepack pnpm exec tsx scripts/build-exe-for-python-sdk.ts --targets=node24-linux-arm64)
 
 (cd "$PACKAGE_ROOT" && corepack pnpm install --frozen-lockfile)

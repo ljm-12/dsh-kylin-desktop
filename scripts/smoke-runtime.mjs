@@ -39,6 +39,18 @@ try {
   if (!page.ok || !/<html(?:\s|>)/iu.test(html)) {
     throw new Error(`smoke-runtime: authenticated root returned HTTP ${String(page.status)} without an HTML document.`)
   }
+  if (!html.includes('/plugins/')) {
+    throw new Error('smoke-runtime: authenticated root HTML does not contain /plugins/ bootstrap script tag; __DSH_BOOT__.entries is empty!')
+  }
+  const pluginMatch = html.match(/\/plugins\/[^\s"'<>]+/i)
+  if (pluginMatch) {
+    const pluginUrl = new URL(pluginMatch[0], authenticated)
+    const pluginRes = await fetch(pluginUrl, { headers: { cookie } })
+    if (pluginRes.status !== 200) {
+      throw new Error(`smoke-runtime: /plugins bundle returned HTTP ${String(pluginRes.status)}`)
+    }
+    console.log(`smoke-runtime: verified /plugins combo bundle HTTP 200 at ${pluginUrl.pathname}`)
+  }
   console.log(`smoke-runtime: authenticated Web profile served ${clean.origin}`)
 } finally {
   try {
