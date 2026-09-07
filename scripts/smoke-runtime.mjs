@@ -44,12 +44,13 @@ try {
   }
   const pluginMatch = html.match(/\/plugins\/[^\s"'<>]+/i)
   if (pluginMatch) {
-    const pluginUrl = new URL(pluginMatch[0], authenticated)
+    const rawPath = pluginMatch[0].replaceAll('&amp;', '&')
+    const pluginUrl = new URL(rawPath, clean.origin)
     const pluginRes = await fetch(pluginUrl, { headers: { cookie } })
     if (pluginRes.status !== 200) {
-      throw new Error(`smoke-runtime: /plugins bundle returned HTTP ${String(pluginRes.status)}`)
+      throw new Error(`smoke-runtime: /plugins bundle returned HTTP ${String(pluginRes.status)} at ${pluginUrl.href}`)
     }
-    console.log(`smoke-runtime: verified /plugins combo bundle HTTP 200 at ${pluginUrl.pathname}`)
+    console.log(`smoke-runtime: verified /plugins combo bundle HTTP 200 at ${pluginUrl.pathname}${pluginUrl.search}`)
   }
   console.log(`smoke-runtime: authenticated Web profile served ${clean.origin}`)
 } finally {
