@@ -66,6 +66,12 @@ export function configureLinuxPlatformCompatibility(
     if (!commandLine.hasSwitch('disable-gpu-compositing')) {
       commandLine.appendSwitch('disable-gpu-compositing')
     }
+    if (!commandLine.hasSwitch('disable-gpu-rasterization')) {
+      commandLine.appendSwitch('disable-gpu-rasterization')
+    }
+    if (!commandLine.hasSwitch('use-gl')) {
+      commandLine.appendSwitch('use-gl', 'disabled')
+    }
   }
 }
 
@@ -111,6 +117,7 @@ async function boot(): Promise<void> {
   console.log(`[deepseek-harness] Runtime log: ${logPath}`)
   const writeLog = (stream: 'stdout' | 'stderr', line: string): void => {
     log.write(`${new Date().toISOString()} ${stream}: ${line}\n`)
+    console.log(`[deepseek-harness-runtime] ${stream}: ${line}`)
   }
 
   const runtimeEnv = createRuntimeEnvironment(process.env, dshHome)
@@ -122,6 +129,7 @@ async function boot(): Promise<void> {
     runtimeEnv.PATH = `${files.office}:${currentPath}`
   }
 
+  console.log(`[deepseek-harness] Preparing runtime process: ${files.executable}`)
   const owned = new RuntimeProcess({
     command: files.executable,
     args: ['--profile', 'web', '--patch', files.patch, '--no-open', '--port', '0'],
@@ -145,7 +153,10 @@ async function boot(): Promise<void> {
   runtime = owned
 
   try {
+    console.log('[deepseek-harness] Starting runtime and awaiting readiness...')
     const url = await owned.start()
+    console.log(`[deepseek-harness] Runtime ready at: ${url.origin}`)
+    console.log('[deepseek-harness] Creating main browser window...')
     const window = new BrowserWindow({
       title: copy.appTitle,
       width: 1400,
@@ -162,12 +173,18 @@ async function boot(): Promise<void> {
     })
     mainWindow = window
     keepNavigationOnOrigin(window, url)
-    window.once('ready-to-show', () => window.show())
+    window.once('ready-to-show', () => {
+      console.log('[deepseek-harness] Browser window ready to show, revealing window')
+      window.show()
+    })
     window.on('closed', () => {
       if (mainWindow === window) mainWindow = undefined
     })
+    console.log('[deepseek-harness] Loading URL into browser window...')
     await window.loadURL(url.href)
+    console.log('[deepseek-harness] Navigation completed')
   } catch (error) {
+    console.error('[deepseek-harness] Boot sequence failed:', error)
     await stopRuntime()
     throw error
   }
