@@ -97,7 +97,6 @@ jobs:
           name: DeepSeek-Harness-Kylin-ARM64-${{ steps.source.outputs.version }}
           path: |
             packaging-source/dist/*.deb
-            packaging-source/dist/*.AppImage
             packaging-source/dist/SHA256SUMS
             packaging-source/dist/BUILD-INFO.json
           if-no-files-found: error

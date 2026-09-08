@@ -17,7 +17,6 @@ describe('Kylin package configuration', () => {
     ])
     expect(config.linux?.target).toEqual([
       { target: 'deb', arch: ['arm64'] },
-      { target: 'AppImage', arch: ['arm64'] },
     ])
     expect(config.deb?.fpm).toContain('--replaces')
     expect(config.deb?.fpm).toContain('dsh-intranet-agent')

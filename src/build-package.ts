@@ -42,7 +42,6 @@ export function packageConfiguration(version: string): Configuration {
       description: 'Thin Electron carrier for the tagged official DeepSeek Harness ARM64 Runtime.',
       target: [
         { target: 'deb', arch: ['arm64'] },
-        { target: 'AppImage', arch: ['arm64'] },
       ],
     },
     deb: {
@@ -69,7 +68,7 @@ async function main(): Promise<void> {
   }
   const artifacts = await build({
     projectDir: packageRoot,
-    targets: Platform.LINUX.createTarget(['deb', 'AppImage'], Arch.arm64),
+    targets: Platform.LINUX.createTarget(['deb'], Arch.arm64),
     config: packageConfiguration(info.repositoryVersion),
   })
   for (const artifact of artifacts) console.log(`build-package: ${artifact}`)

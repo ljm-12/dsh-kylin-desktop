@@ -14,7 +14,7 @@ Electron `43.4.0`、electron-builder `26.15.7`、TypeScript 和测试由本目�
 
 ## 运行构建
 
-打开 `Build Kylin ARM64 desktop` 工作流并输入要封装的官方标签。工作流输出一个 artifact，其中包含 `.deb`、AppImage、`SHA256SUMS` 和 `BUILD-INFO.json` 文件。
+打开 `Build Kylin ARM64 desktop` 工作流并输入要封装的官方标签。工作流输出一个 artifact，其中包含 `.deb`、`SHA256SUMS` 和 `BUILD-INFO.json` 文件。
 
 不使用远端工作流时，把本仓库和官方标签的干净 checkout 复制到 Linux ARM64 构建机，然后执行：
 
@@ -58,7 +58,7 @@ Electron 进程使用以下参数启动内置 Runtime：
 
 本地测试覆盖跨输出块的就绪行解析、Token 脱敏、环境变量清理、启动前退出、启动后意外退出、子进程完整关闭、ARM64 ELF 识别和打包配置。
 
-ARM64 工作流还检查源码身份、Runtime 构建、认证后的 Web 根页面、Debian 元数据、可执行文件架构与权限、内置策略、AppImage 架构和校验和。
+ARM64 工作流还检查源码身份、Runtime 构建、认证后的 Web 根页面、Debian 元数据、可执行文件架构与权限、内置策略和校验和。
 
 工作流成功不代表图形程序已经在麒麟上验证。正式批准仍需在支持的麒麟 ARM64 镜像上完成安装、启动、模型配置、一次对话、一次工具调用、重启和升级测试。
 
@@ -68,9 +68,8 @@ ARM64 工作流还检查源码身份、Runtime 构建、认证后的 Web 根页�
 
 ```text
 DeepSeek-Harness-Kylin-ARM64-<version>.deb
-DeepSeek-Harness-Kylin-ARM64-<version>.AppImage
 SHA256SUMS
 BUILD-INFO.json
 ```
 
-`.deb` 是麒麟主要交付物。AppImage 仅作补充，因为包括部分系统所需 FUSE 在内的运行条件会随目标镜像变化。
+`.deb` 是针对银河麒麟的标准交付安装包，安装后自动完成系统目录权限配置、桌面菜单注册与 CLI 软链。

@@ -5,7 +5,6 @@ VERSION="${1:?usage: verify-linux-artifacts.sh <version>}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST="$ROOT/dist"
 DEB="$DIST/DeepSeek-Harness-Kylin-ARM64-${VERSION}.deb"
-APPIMAGE="$DIST/DeepSeek-Harness-Kylin-ARM64-${VERSION}.AppImage"
 VERIFY_ROOT="$(mktemp -d /tmp/dsh-kylin-desktop-verify.XXXXXX)"
 
 cleanup() {
@@ -35,7 +34,6 @@ verify_arm64() {
 }
 
 test -f "$DEB"
-test -f "$APPIMAGE"
 PACKAGE_NAME="$(dpkg-deb --field "$DEB" Package)"
 echo "verify-linux-artifacts: Package=$PACKAGE_NAME"
 test "$PACKAGE_NAME" = "deepseek-harness-kylin"
@@ -102,9 +100,7 @@ dpkg-deb --control "$DEB" "$VERIFY_ROOT/control"
 test -f "$VERIFY_ROOT/control/postrm"
 test -f "$VERIFY_ROOT/control/postinst"
 
-verify_arm64 "$APPIMAGE"
-
-(cd "$DIST" && sha256sum "$(basename "$DEB")" "$(basename "$APPIMAGE")" >SHA256SUMS)
+(cd "$DIST" && sha256sum "$(basename "$DEB")" >SHA256SUMS)
 cp -- "$ROOT/runtime/BUILD-INFO.json" "$DIST/BUILD-INFO.json"
 
 echo "package=deepseek-harness-kylin"

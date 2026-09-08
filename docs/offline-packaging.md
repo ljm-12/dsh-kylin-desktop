@@ -38,7 +38,7 @@
   - 调用 `build-exe-for-python-sdk.ts` 制作 Node 24 单文件可执行体 `deepseek-harness-sdk-runtime-linux-arm64`；
   - 打包离线 Office/Browser Python 运行时环境；
   - 执行 `smoke-runtime` 验证后端 HTTP 服务和离线资源无外网访问正常启动；
-  - 使用 `electron-builder` 生成 `.deb` 和 `.AppImage` 两类制品；
+  - 使用 `electron-builder` 生成标准的 `.deb` 安装包制品；
   - 执行 `verify-linux-artifacts.sh`，严密校验二进制 ELF 架构（必须为 ARM aarch64）、无损坏 ELF、deb 包依赖声明及文件完整性；
   - 上传制品归档供直接下载。
 
@@ -51,14 +51,14 @@
    - 在终端 export `INTRANET_AGENT_API_KEY` 无效；内网模型凭据必须在应用界面 **Settings > Models** 中录入，凭据将保存在本地 Harness 凭据库中。
 2. **产物归档与保留期**：
    - GitHub Actions 的构建 artifact 默认仅保留 14 天，且未配置自动 Release 发布。
-   - 打包完成后应及时下载转存 `.deb`、AppImage 以及配套的 `SHA256SUMS` 和 `BUILD-INFO.json`。
+   - 打包完成后应及时下载转存 `.deb` 以及配套的 `SHA256SUMS` 和 `BUILD-INFO.json`。
 
 ---
 
 ## 打包步骤记录
 
 1. **版本排查**：
-   检查官方仓库 `deepseek-ai/deepseek-harness` 最新发布的 `dsh-v*` 标签版本（例如 `dsh-v0.1.3-alpha.1`）。
+   检查官方仓库 `deepseek-ai/deepseek-harness` 最新发布的 `dsh-v*` 标签版本（例如 `dsh-v0.1.3-alpha.2`）。
 2. **触发构建**：
    通过 GitHub API 或 Actions 控制台触发 `Build Kylin ARM64 desktop` 工作流，传入选定的 `dsh_ref`。
 3. **验收校验与归档**：

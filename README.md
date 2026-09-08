@@ -14,7 +14,7 @@ Electron `43.4.0`, electron-builder `26.15.7`, TypeScript, and the tests are pin
 
 ## Run the build
 
-Open the `Build Kylin ARM64 desktop` workflow and enter the official tag to package. The workflow emits one artifact containing the `.deb`, AppImage, `SHA256SUMS`, and `BUILD-INFO.json` files.
+Open the `Build Kylin ARM64 desktop` workflow and enter the official tag to package. The workflow emits one artifact containing the `.deb`, `SHA256SUMS`, and `BUILD-INFO.json` files.
 
 Without a remote workflow, copy this repository and a clean checkout of the official tag to a Linux ARM64 build machine, then run:
 
@@ -58,7 +58,7 @@ Note for migrations from legacy `dsh-intranet-agent`: the desktop security bound
 
 The local tests cover readiness parsing across output chunks, token redaction, environment scrubbing, early and unexpected exits, quiescent child shutdown, ARM64 ELF recognition, and package configuration.
 
-The ARM64 workflow additionally checks source identity, the Runtime build, its authenticated Web root, Debian metadata, executable architecture and modes, packaged policy, AppImage architecture, and checksums.
+The ARM64 workflow additionally checks source identity, the Runtime build, its authenticated Web root, Debian metadata, executable architecture and modes, packaged policy, and checksums.
 
 A successful workflow does not prove the graphical application on Kylin. Release approval still requires installation, launch, model configuration, one conversation, one tool call, restart, and upgrade testing on the supported Kylin ARM64 image.
 
@@ -68,9 +68,8 @@ The verified files use these names:
 
 ```text
 DeepSeek-Harness-Kylin-ARM64-<version>.deb
-DeepSeek-Harness-Kylin-ARM64-<version>.AppImage
 SHA256SUMS
 BUILD-INFO.json
 ```
 
-The `.deb` is the primary Kylin artifact. AppImage is supplemental because its runtime requirements, including FUSE on some systems, vary across target images.
+The `.deb` package is the standard delivery format for Galaxy Kylin Linux, automatically configuring permissions, start menu registration, and CLI symlinks.
