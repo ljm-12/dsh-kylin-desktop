@@ -25,16 +25,23 @@ export interface CommandLineSwitchTarget {
   hasSwitch: (switchName: string) => boolean
 }
 
+/** Interface matching Electron's app methods used for platform switches. */
+export interface AppCompatibilityTarget {
+  disableHardwareAcceleration?: () => void
+}
+
 /**
  * Configure Linux desktop platform defaults to ensure compatibility.
- * On Linux (especially Kylin UKUI on HiSilicon/Kirin/ARM64), native Wayland compositors
- * frequently lack protocols like wp_viewporter or text-input-v3, causing Ozone Wayland to crash with SIGSEGV.
- * Defaulting to X11/XWayland backend ensures stability across both X11 and Wayland sessions.
+ * On Linux (especially Kylin UKUI on ARM64 with proprietary GPU drivers like DATAN / Jingjiawei),
+ * DRM master access is not available to user sessions ('drmSetInterfaceVersion() failed - not DRM_MASTER'),
+ * which causes Chromium's EGL / VAAPI driver initialization to crash with SIGSEGV.
+ * Defaulting to X11/XWayland backend and disabling hardware acceleration guarantees rock-solid stability.
  */
 export function configureLinuxPlatformCompatibility(
   platform: string,
   env: NodeJS.ProcessEnv,
   commandLine: CommandLineSwitchTarget,
+  appTarget?: AppCompatibilityTarget,
 ): void {
   if (platform !== 'linux') return
   if (!commandLine.hasSwitch('ozone-platform')) {
@@ -42,6 +49,17 @@ export function configureLinuxPlatformCompatibility(
   }
   if (!env.GDK_BACKEND) {
     env.GDK_BACKEND = 'x11'
+  }
+  if (env.DSH_ENABLE_GPU !== '1') {
+    if (typeof appTarget?.disableHardwareAcceleration === 'function') {
+      appTarget.disableHardwareAcceleration()
+    }
+    if (!commandLine.hasSwitch('disable-gpu')) {
+      commandLine.appendSwitch('disable-gpu')
+    }
+    if (!commandLine.hasSwitch('disable-dev-shm-usage')) {
+      commandLine.appendSwitch('disable-dev-shm-usage')
+    }
   }
 }
 
@@ -150,7 +168,7 @@ async function boot(): Promise<void> {
 }
 
 if (typeof app?.requestSingleInstanceLock === 'function') {
-  configureLinuxPlatformCompatibility(process.platform, process.env, app.commandLine)
+  configureLinuxPlatformCompatibility(process.platform, process.env, app.commandLine, app)
 
   if (!app.requestSingleInstanceLock()) {
     console.warn('[deepseek-harness] Another instance is already running. Exiting.')
