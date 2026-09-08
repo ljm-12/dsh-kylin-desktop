@@ -32,9 +32,15 @@
 - **工作流文件**：`.github/workflows/build-kylin-arm64-desktop.yml`
 - **运行环境**：原生 `ubuntu-24.04-arm` runner。
 - **构建机制**：
-  - 接收参数 `dsh_ref`（如 `dsh-v0.1.3-alpha.1`），拉取官方 `deepseek-ai/deepseek-harness` 对应的 Release Tag；
-  - 校验上游版本一致性，并在容器内编译 manylinux 2.28 兼容的 `node-pty` 原生二进制；
-  - 打包生成 ARM64 可执行程序与完整 Electron 桌面端安装包（`.deb` 与 `.AppImage`），并生成 `SHA256SUMS` 与 `BUILD-INFO.json`。
+  - 接收参数 `dsh_ref`（如 `dsh-v0.1.3-alpha.2`），拉取官方 `deepseek-ai/deepseek-harness` 对应的 Release Tag；
+  - 在官方 `ubuntu-24.04-arm` 原生 ARM64 虚拟环境上运行；
+  - 自动编译 `node-pty`（使用 `manylinux_2_28_aarch64` 容器编译并校验 `GLIBC <= 2.28`）；
+  - 调用 `build-exe-for-python-sdk.ts` 制作 Node 24 单文件可执行体 `deepseek-harness-sdk-runtime-linux-arm64`；
+  - 打包离线 Office/Browser Python 运行时环境；
+  - 执行 `smoke-runtime` 验证后端 HTTP 服务和离线资源无外网访问正常启动；
+  - 使用 `electron-builder` 生成 `.deb` 和 `.AppImage` 两类制品；
+  - 执行 `verify-linux-artifacts.sh`，严密校验二进制 ELF 架构（必须为 ARM aarch64）、无损坏 ELF、deb 包依赖声明及文件完整性；
+  - 上传制品归档供直接下载。
 
 ---
 
