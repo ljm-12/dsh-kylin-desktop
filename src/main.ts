@@ -60,6 +60,12 @@ export function configureLinuxPlatformCompatibility(
     if (!commandLine.hasSwitch('disable-dev-shm-usage')) {
       commandLine.appendSwitch('disable-dev-shm-usage')
     }
+    if (!commandLine.hasSwitch('disable-accelerated-video-decode')) {
+      commandLine.appendSwitch('disable-accelerated-video-decode')
+    }
+    if (!commandLine.hasSwitch('disable-gpu-compositing')) {
+      commandLine.appendSwitch('disable-gpu-compositing')
+    }
   }
 }
 

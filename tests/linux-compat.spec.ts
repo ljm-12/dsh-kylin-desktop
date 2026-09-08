@@ -17,6 +17,8 @@ describe('configureLinuxPlatformCompatibility', () => {
       { name: 'ozone-platform', value: 'x11' },
       { name: 'disable-gpu', value: undefined },
       { name: 'disable-dev-shm-usage', value: undefined },
+      { name: 'disable-accelerated-video-decode', value: undefined },
+      { name: 'disable-gpu-compositing', value: undefined },
     ])
     expect(env.GDK_BACKEND).toBe('x11')
     expect(disableHardwareAcceleration).toHaveBeenCalledOnce()
