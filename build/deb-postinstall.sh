@@ -49,7 +49,22 @@ if [ -f "$RUNTIME_TARGET" ]; then
 fi
 
 
-# 5. Refresh desktop and mime databases
+# 5. KySec security whitelist registration (Galaxy Kylin)
+if command -v kysec_set >/dev/null 2>&1; then
+  echo "[deb-postinstall] Registering binaries with Kylin KySec security subsystem..."
+  for target_bin in \
+    "/opt/DeepSeek Harness Kylin/deepseek-harness-kylin" \
+    "/opt/DeepSeek Harness Kylin/chrome-sandbox" \
+    "/opt/DeepSeek Harness Kylin/resources/runtime/deepseek-harness-sdk-runtime-linux-arm64" \
+    "/opt/DeepSeek Harness Kylin/resources/runtime/ripgrep"; do
+    if [ -f "$target_bin" ]; then
+      kysec_set -n exectl -m add -t "$target_bin" 2>/dev/null || true
+      kysec_set -n appctl -m add -t "$target_bin" 2>/dev/null || true
+    fi
+  done
+fi
+
+# 6. Refresh desktop and mime databases
 if hash update-mime-database 2>/dev/null; then
   update-mime-database /usr/share/mime || true
 fi

@@ -112,6 +112,16 @@ async function boot(): Promise<void> {
   const log = createWriteStream(logPath, { flags: 'a', mode: 0o600 })
   runtimeLog = log
   console.log(`[deepseek-harness] Runtime log: ${logPath}`)
+
+  if (process.platform === 'linux') {
+    if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
+      console.warn('[deepseek-harness] Warning: Neither DISPLAY nor WAYLAND_DISPLAY is set in environment.')
+      console.warn('[deepseek-harness] GUI window requires an active graphical display session (e.g. Kylin UKUI desktop).')
+    } else {
+      console.log(`[deepseek-harness] Display session: DISPLAY=${process.env.DISPLAY ?? '(unset)'}, WAYLAND_DISPLAY=${process.env.WAYLAND_DISPLAY ?? '(unset)'}`)
+    }
+  }
+
   const writeLog = (stream: 'stdout' | 'stderr', line: string): void => {
     log.write(`${new Date().toISOString()} ${stream}: ${line}\n`)
     console.log(`[deepseek-harness-runtime] ${stream}: ${line}`)

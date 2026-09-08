@@ -19,6 +19,18 @@ case "$action" in
     rm -f /usr/bin/dsh-browser
     rm -f /usr/bin/dsh-python
 
+    # 2.1 KySec security whitelist cleanup (Galaxy Kylin)
+    if command -v kysec_set >/dev/null 2>&1; then
+      for target_bin in \
+        "/opt/DeepSeek Harness Kylin/deepseek-harness-kylin" \
+        "/opt/DeepSeek Harness Kylin/chrome-sandbox" \
+        "/opt/DeepSeek Harness Kylin/resources/runtime/deepseek-harness-sdk-runtime-linux-arm64" \
+        "/opt/DeepSeek Harness Kylin/resources/runtime/ripgrep"; do
+        kysec_set -n exectl -m del -t "$target_bin" 2>/dev/null || true
+        kysec_set -n appctl -m del -t "$target_bin" 2>/dev/null || true
+      done
+    fi
+
     # 3. Refresh desktop and mime databases
     if hash update-mime-database 2>/dev/null; then
       update-mime-database /usr/share/mime || true
