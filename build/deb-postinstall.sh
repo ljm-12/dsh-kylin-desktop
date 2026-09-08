@@ -40,6 +40,14 @@ if [ -f "$OFFICE_TARGET/dsh-python" ]; then
   ln -sf "$OFFICE_TARGET/dsh-python" /usr/bin/dsh-python
 fi
 
+# 4.1 Symlink dsh runtime CLI into /usr/bin/dsh
+RUNTIME_TARGET="/opt/DeepSeek Harness Kylin/resources/runtime/deepseek-harness-sdk-runtime-linux-arm64"
+if [ -f "$RUNTIME_TARGET" ]; then
+  chmod 755 "$RUNTIME_TARGET"
+  ln -sf "$RUNTIME_TARGET" /usr/bin/dsh
+  ln -sf "$RUNTIME_TARGET" /usr/bin/deepseek-harness
+fi
+
 
 # 5. Refresh desktop and mime databases
 if hash update-mime-database 2>/dev/null; then

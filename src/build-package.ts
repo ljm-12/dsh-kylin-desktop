@@ -30,6 +30,7 @@ export function packageConfiguration(version: string): Configuration {
       { from: 'config', to: 'config' },
       { from: 'staging/office', to: 'office' },
       { from: 'skills', to: 'skills' },
+      { from: 'scripts/dsh-web.sh', to: 'dsh-web.sh' },
     ],
     artifactName: `DeepSeek-Harness-Kylin-ARM64-${version}.\${ext}`,
     linux: {

@@ -96,7 +96,7 @@ chmod -R 755 "$OFFICE_STAGING/python/bin"
 chmod 644 "$OFFICE_STAGING/office_tool.py" "$OFFICE_STAGING/browser_tool.py"
 "$OFFICE_STAGING/dsh-python" -c "import pypdf, docx, openpyxl, pptx, lxml, PIL; print('build-on-arm64: office runtime imports verified')"
 "$OFFICE_STAGING/dsh-office" --help >/dev/null
-chmod 755 "$PACKAGE_ROOT/build"/deb-*.sh
+chmod 755 "$PACKAGE_ROOT/build"/deb-*.sh "$PACKAGE_ROOT/scripts"/dsh-web.sh
 
 (cd "$PACKAGE_ROOT" && corepack pnpm run smoke-runtime)
 (cd "$PACKAGE_ROOT" && corepack pnpm run dist)

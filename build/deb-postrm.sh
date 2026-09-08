@@ -13,6 +13,8 @@ case "$action" in
     # 2. Clean up symlinks in /usr/bin
     rm -f /usr/bin/deepseek-harness-kylin
     rm -f /usr/bin/dsh-intranet
+    rm -f /usr/bin/dsh
+    rm -f /usr/bin/deepseek-harness
     rm -f /usr/bin/dsh-office
     rm -f /usr/bin/dsh-browser
     rm -f /usr/bin/dsh-python

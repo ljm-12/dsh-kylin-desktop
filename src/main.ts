@@ -6,6 +6,7 @@ import { app, BrowserWindow, dialog } from 'electron'
 import { desktopCopy } from './locales.js'
 import { createRuntimeEnvironment, RuntimeProcess, type RuntimeExit } from './runtime-process.js'
 import { resolveRuntimeFiles, verifyExecutable } from './runtime-files.js'
+import { reclaimStaleSingletonLock } from './single-instance.js'
 
 const READY_TIMEOUT_MS = 120_000
 const SHUTDOWN_TIMEOUT_MS = 10_000
@@ -193,7 +194,20 @@ async function boot(): Promise<void> {
 if (typeof app?.requestSingleInstanceLock === 'function') {
   configureLinuxPlatformCompatibility(process.platform, process.env, app.commandLine, app)
 
-  if (!app.requestSingleInstanceLock()) {
+  let hasLock = app.requestSingleInstanceLock()
+  if (!hasLock && typeof app.getPath === 'function') {
+    try {
+      const reclaimed = reclaimStaleSingletonLock(app.getPath('userData'))
+      if (reclaimed) {
+        console.warn('[deepseek-harness] Cleared stale SingletonLock from terminated process. Retrying...')
+        hasLock = app.requestSingleInstanceLock()
+      }
+    } catch {
+      // Ignore cleanup inspection errors
+    }
+  }
+
+  if (!hasLock) {
     console.warn('[deepseek-harness] Another instance is already running. Exiting.')
     app.quit()
   } else {
