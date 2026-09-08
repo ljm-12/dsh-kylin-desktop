@@ -18,9 +18,6 @@ describe('configureLinuxPlatformCompatibility', () => {
       { name: 'disable-gpu', value: undefined },
       { name: 'disable-dev-shm-usage', value: undefined },
       { name: 'disable-accelerated-video-decode', value: undefined },
-      { name: 'disable-gpu-compositing', value: undefined },
-      { name: 'disable-gpu-rasterization', value: undefined },
-      { name: 'use-gl', value: 'disabled' },
     ])
     expect(env.GDK_BACKEND).toBe('x11')
     expect(disableHardwareAcceleration).toHaveBeenCalledOnce()

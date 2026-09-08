@@ -11,10 +11,10 @@ else
   ln -sf '/opt/DeepSeek Harness Kylin/deepseek-harness-kylin' '/usr/bin/deepseek-harness-kylin'
 fi
 
-if ! { [[ -L /proc/self/ns/user ]] && unshare --user true; }; then
-  chmod 4755 '/opt/DeepSeek Harness Kylin/chrome-sandbox' || true
-else
-  chmod 0755 '/opt/DeepSeek Harness Kylin/chrome-sandbox' || true
+SANDBOX_BIN='/opt/DeepSeek Harness Kylin/chrome-sandbox'
+if [ -f "$SANDBOX_BIN" ]; then
+  chown root:root "$SANDBOX_BIN" 2>/dev/null || true
+  chmod 4755 "$SANDBOX_BIN" 2>/dev/null || true
 fi
 
 # 2. Backward compatibility: symlink /usr/bin/dsh-intranet -> /usr/bin/deepseek-harness-kylin
@@ -46,6 +46,13 @@ if [ -f "$RUNTIME_TARGET" ]; then
   chmod 755 "$RUNTIME_TARGET"
   ln -sf "$RUNTIME_TARGET" /usr/bin/dsh
   ln -sf "$RUNTIME_TARGET" /usr/bin/deepseek-harness
+fi
+
+# 4.2 Symlink dsh-web runner into /usr/bin/dsh-web
+WEB_RUNNER="/opt/DeepSeek Harness Kylin/resources/dsh-web.sh"
+if [ -f "$WEB_RUNNER" ]; then
+  chmod 755 "$WEB_RUNNER"
+  ln -sf "$WEB_RUNNER" /usr/bin/dsh-web
 fi
 
 
