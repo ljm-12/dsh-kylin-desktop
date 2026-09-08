@@ -18,7 +18,6 @@ case "$action" in
     rm -f /usr/bin/dsh-office
     rm -f /usr/bin/dsh-browser
     rm -f /usr/bin/dsh-python
-    rm -f /usr/bin/dsh-web
 
     # 3. Refresh desktop and mime databases
     if hash update-mime-database 2>/dev/null; then

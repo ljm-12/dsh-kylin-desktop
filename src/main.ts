@@ -2,7 +2,7 @@ import { createWriteStream, existsSync, mkdirSync, type WriteStream } from 'node
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { finished } from 'node:stream/promises'
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog } from 'electron'
 import { desktopCopy } from './locales.js'
 import { createRuntimeEnvironment, RuntimeProcess, type RuntimeExit } from './runtime-process.js'
 import { resolveRuntimeFiles, verifyExecutable } from './runtime-files.js'
@@ -36,7 +36,8 @@ export interface AppCompatibilityTarget {
  * On Linux (especially Kylin UKUI on ARM64 with proprietary GPU drivers like DATAN / Jingjiawei),
  * DRM master access is not available to user sessions ('drmSetInterfaceVersion() failed - not DRM_MASTER'),
  * which causes Chromium's EGL / VAAPI driver initialization to crash with SIGSEGV.
- * Defaulting to X11/XWayland backend and disabling hardware acceleration guarantees rock-solid stability.
+ * Defaulting to X11/XWayland backend, appending --no-sandbox (required on Kylin kernels where user
+ * namespaces are disabled for non-root users), and disabling hardware acceleration guarantees rock-solid stability.
  * Note: Never set '--use-gl=disabled' as that causes BrowserWindow creation to crash with null pointer dereference.
  */
 export function configureLinuxPlatformCompatibility(
@@ -51,6 +52,9 @@ export function configureLinuxPlatformCompatibility(
   }
   if (!env.GDK_BACKEND) {
     env.GDK_BACKEND = 'x11'
+  }
+  if (!commandLine.hasSwitch('no-sandbox')) {
+    commandLine.appendSwitch('no-sandbox')
   }
   if (env.DSH_ENABLE_GPU !== '1') {
     if (typeof appTarget?.disableHardwareAcceleration === 'function') {
@@ -88,10 +92,6 @@ async function stopRuntime(): Promise<void> {
       // Diagnostic logging cannot keep the already-terminated Runtime alive.
     })
   }
-}
-
-function isWebMode(): boolean {
-  return process.argv.includes('--web') || process.env.DSH_MODE === 'web'
 }
 
 async function boot(): Promise<void> {
@@ -153,38 +153,21 @@ async function boot(): Promise<void> {
     console.log('[deepseek-harness] Starting runtime and awaiting readiness...')
     const url = await owned.start()
     console.log(`[deepseek-harness] Runtime ready at: ${url.origin}`)
-
-    if (isWebMode()) {
-      console.log('[deepseek-harness] Web mode enabled. Opening default browser...')
-      await shell.openExternal(url.href)
-      console.log(`[deepseek-harness] Web interface opened at: ${url.href}`)
-      console.log('[deepseek-harness] Background runtime is active. Press Ctrl+C to stop.')
-      return
-    }
-
     console.log('[deepseek-harness] Creating main browser window...')
-    let window: BrowserWindow
-    try {
-      window = new BrowserWindow({
-        title: copy.appTitle,
-        width: 1400,
-        height: 900,
-        minWidth: 960,
-        minHeight: 640,
-        show: false,
-        backgroundColor: '#101114',
-        webPreferences: {
-          contextIsolation: true,
-          nodeIntegration: false,
-          sandbox: true,
-        },
-      })
-    } catch (windowError) {
-      console.warn('[deepseek-harness] Failed to create native BrowserWindow, falling back to system browser:', windowError)
-      await shell.openExternal(url.href)
-      console.log(`[deepseek-harness] Web interface opened in fallback browser: ${url.href}`)
-      return
-    }
+    const window = new BrowserWindow({
+      title: copy.appTitle,
+      width: 1400,
+      height: 900,
+      minWidth: 960,
+      minHeight: 640,
+      show: false,
+      backgroundColor: '#101114',
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: false,
+      },
+    })
 
     mainWindow = window
     keepNavigationOnOrigin(window, url)
@@ -198,6 +181,10 @@ async function boot(): Promise<void> {
     console.log('[deepseek-harness] Loading URL into browser window...')
     await window.loadURL(url.href)
     console.log('[deepseek-harness] Navigation completed')
+    if (!window.isDestroyed() && !window.isVisible()) {
+      console.log('[deepseek-harness] Window not visible after load, revealing now')
+      window.show()
+    }
   } catch (error) {
     console.error('[deepseek-harness] Boot sequence failed:', error)
     await stopRuntime()
@@ -230,11 +217,7 @@ if (typeof app?.requestSingleInstanceLock === 'function') {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.focus()
     })
-    app.on('window-all-closed', () => {
-      if (!isWebMode()) {
-        app.quit()
-      }
-    })
+    app.on('window-all-closed', () => app.quit())
     app.on('before-quit', (event) => {
       if (quitting) return
       event.preventDefault()

@@ -15,6 +15,7 @@ describe('configureLinuxPlatformCompatibility', () => {
 
     expect(switches).toEqual([
       { name: 'ozone-platform', value: 'x11' },
+      { name: 'no-sandbox', value: undefined },
       { name: 'disable-gpu', value: undefined },
       { name: 'disable-dev-shm-usage', value: undefined },
       { name: 'disable-accelerated-video-decode', value: undefined },
@@ -34,7 +35,10 @@ describe('configureLinuxPlatformCompatibility', () => {
 
     configureLinuxPlatformCompatibility('linux', env, commandLine, { disableHardwareAcceleration })
 
-    expect(switches).toEqual([{ name: 'ozone-platform', value: 'x11' }])
+    expect(switches).toEqual([
+      { name: 'ozone-platform', value: 'x11' },
+      { name: 'no-sandbox', value: undefined },
+    ])
     expect(disableHardwareAcceleration).not.toHaveBeenCalled()
   })
 

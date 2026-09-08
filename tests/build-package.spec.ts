@@ -13,7 +13,6 @@ describe('Kylin package configuration', () => {
       { from: 'config', to: 'config' },
       { from: 'staging/office', to: 'office' },
       { from: 'skills', to: 'skills' },
-      { from: 'scripts/dsh-web.sh', to: 'dsh-web.sh' },
     ])
     expect(config.linux?.target).toEqual([
       { target: 'deb', arch: ['arm64'] },

@@ -48,13 +48,6 @@ if [ -f "$RUNTIME_TARGET" ]; then
   ln -sf "$RUNTIME_TARGET" /usr/bin/deepseek-harness
 fi
 
-# 4.2 Symlink dsh-web runner into /usr/bin/dsh-web
-WEB_RUNNER="/opt/DeepSeek Harness Kylin/resources/dsh-web.sh"
-if [ -f "$WEB_RUNNER" ]; then
-  chmod 755 "$WEB_RUNNER"
-  ln -sf "$WEB_RUNNER" /usr/bin/dsh-web
-fi
-
 
 # 5. Refresh desktop and mime databases
 if hash update-mime-database 2>/dev/null; then
