@@ -296,29 +296,30 @@ function patchSessionControllerAgent(sourceDir) {
 
   private async agentOptions(): Promise<AgentOptions> {
     const selection = this.ctx.agentDefaultModel.currentSelection()
-    try {
-      if (this.ctx.llm) {
-        await this.ctx.llm.resolveModelInfo(selection.provider, selection.model)
-        return { provider: selection.provider, model: selection.model }
-      }
-    } catch {
+    const llm = this.ctx.llm
+    if (llm !== undefined) {
       try {
-        const providers = this.ctx.llm?.listProviders?.() ?? []
-        for (const provider of providers) {
-          try {
-            const models = await this.ctx.llm.listModels(provider.id)
-            if (models.length > 0) {
-              const fallback: AgentModelSelection = { provider: provider.id, model: models[0].id }
-              this.resolvedFallbackSelection = fallback
-              void this.ctx.agentDefaultModel.saveSelection(fallback).catch(() => {})
-              return fallback
-            }
-          } catch {
-            continue
-          }
-        }
+        await llm.resolveModelInfo(selection.provider, selection.model)
+        return { provider: selection.provider, model: selection.model }
       } catch {
-        // Fallback discovery failed
+        try {
+          const providers = llm.listProviders?.() ?? []
+          for (const provider of providers) {
+            try {
+              const models = await llm.listModels(provider.id)
+              if (models.length > 0) {
+                const fallback: AgentModelSelection = { provider: provider.id, model: models[0].id }
+                this.resolvedFallbackSelection = fallback
+                void this.ctx.agentDefaultModel.saveSelection(fallback).catch(() => {})
+                return fallback
+              }
+            } catch {
+              continue
+            }
+          }
+        } catch {
+          // Fallback discovery failed
+        }
       }
     }
     return { provider: selection.provider, model: selection.model }
@@ -333,11 +334,20 @@ function patchSessionControllerAgent(sourceDir) {
   // Replace the 3 call sites: resumeObserved, createOrAdopt (resume), createOrAdopt (create)
   code = code.replaceAll('agentOptions: this.agentOptions(),', 'agentOptions: await this.agentOptions(),')
 
-  const needleSelection = `        const loggedHeader = agent.session.requestHeader()
+  const needleSelection = `    const defaultModel = this.ctx.agentDefaultModel
+    const selection: InstalledSelection = {
+      get current(): AgentModelSelection {
+        if (picked !== undefined) return picked
+        const loggedHeader = agent.session.requestHeader()
         if (loggedHeader === undefined) return defaultModel.currentSelection()`
 
-  const replacementSelection = `        const loggedHeader = agent.session.requestHeader()
-        if (loggedHeader === undefined) return this.resolvedFallbackSelection ?? defaultModel.currentSelection()`
+  const replacementSelection = `    const defaultModel = this.ctx.agentDefaultModel
+    const host = this
+    const selection: InstalledSelection = {
+      get current(): AgentModelSelection {
+        if (picked !== undefined) return picked
+        const loggedHeader = agent.session.requestHeader()
+        if (loggedHeader === undefined) return host.resolvedFallbackSelection ?? defaultModel.currentSelection()`
 
   if (code.includes(needleSelection)) {
     code = code.replace(needleSelection, replacementSelection)

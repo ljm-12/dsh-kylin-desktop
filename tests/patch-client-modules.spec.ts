@@ -189,9 +189,11 @@ export class SessionControllerHost {
     })
   }
 
-  async readHeader() {
-    const selection = {
-      get current() {
+  async selectionFor() {
+    const defaultModel = this.ctx.agentDefaultModel
+    const selection: InstalledSelection = {
+      get current(): AgentModelSelection {
+        if (picked !== undefined) return picked
         const loggedHeader = agent.session.requestHeader()
         if (loggedHeader === undefined) return defaultModel.currentSelection()
         return loggedHeader
@@ -208,10 +210,11 @@ export class SessionControllerHost {
 
     const patched = readFileSync(agentFile, 'utf8')
     expect(patched).toContain('private resolvedFallbackSelection?: AgentModelSelection')
-    expect(patched).toContain('await this.ctx.llm.resolveModelInfo(selection.provider, selection.model)')
+    expect(patched).toContain('await llm.resolveModelInfo(selection.provider, selection.model)')
     expect(patched).toContain('void this.ctx.agentDefaultModel.saveSelection(fallback).catch(() => {})')
     expect(patched).toContain('agentOptions: await this.agentOptions(),')
-    expect(patched).toContain('return this.resolvedFallbackSelection ?? defaultModel.currentSelection()')
+    expect(patched).toContain('const host = this')
+    expect(patched).toContain('return host.resolvedFallbackSelection ?? defaultModel.currentSelection()')
     expect(existsSync(join(agentLibDir, 'stale.js'))).toBe(false)
   })
 
