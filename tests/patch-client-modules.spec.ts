@@ -212,6 +212,7 @@ export class SessionControllerHost {
     expect(patched).toContain('private resolvedFallbackSelection?: AgentModelSelection')
     expect(patched).toContain('await llm.resolveModelInfo(selection.provider, selection.model)')
     expect(patched).toContain('void this.ctx.agentDefaultModel.saveSelection(fallback).catch(() => {})')
+    expect(patched).toContain('const firstModel = models[0]')
     expect(patched).toContain('agentOptions: await this.agentOptions(),')
     expect(patched).toContain('const host = this')
     expect(patched).toContain('return host.resolvedFallbackSelection ?? defaultModel.currentSelection()')

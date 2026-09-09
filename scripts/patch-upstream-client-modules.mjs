@@ -307,8 +307,9 @@ function patchSessionControllerAgent(sourceDir) {
           for (const provider of providers) {
             try {
               const models = await llm.listModels(provider.id)
-              if (models.length > 0) {
-                const fallback: AgentModelSelection = { provider: provider.id, model: models[0].id }
+              const firstModel = models[0]
+              if (firstModel !== undefined) {
+                const fallback: AgentModelSelection = { provider: provider.id, model: firstModel.id }
                 this.resolvedFallbackSelection = fallback
                 void this.ctx.agentDefaultModel.saveSelection(fallback).catch(() => {})
                 return fallback
