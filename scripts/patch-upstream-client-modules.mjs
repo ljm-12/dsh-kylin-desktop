@@ -604,8 +604,78 @@ function patchUiConversationRoot(sourceDir) {
   }
 }
 
+// 10. Patch ui-sidebar SidebarRoot.module.css to hide redundant brand logo in desktop window
+function patchUiSidebar(sourceDir) {
+  const cssPath = resolve(sourceDir, 'packages/client/ui-sidebar/src/client/SidebarRoot.module.css')
+  if (!existsSync(cssPath)) {
+    console.log(`patch-upstream: SidebarRoot.module.css not found at ${cssPath}, skipping ui-sidebar patch.`)
+    return
+  }
+
+  let code = readFileSync(cssPath, 'utf8')
+  const isCRLF = code.includes('\r\n')
+  code = code.replace(/\r\n/g, '\n')
+
+  if (code.includes('.brand {\n  display: none;')) {
+    console.log('patch-upstream: SidebarRoot.module.css already patched, skipping.')
+    return
+  }
+
+  const needle = `.brand {
+  flex: 1;`
+
+  const replacement = `.brand {
+  display: none;
+  flex: 1;`
+
+  if (!code.includes(needle)) {
+    console.warn('patch-upstream: could not find .brand needle in SidebarRoot.module.css')
+    return
+  }
+
+  code = code.replace(needle, replacement)
+
+  const needleLogoRow = `.logoRow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  height: 60px;
+  padding: 8px 0 8px 4px;
+  margin-bottom: 8px;`
+
+  const replacementLogoRow = `.logoRow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  height: 40px;
+  padding: 4px 0 4px 4px;
+  margin-bottom: 4px;`
+
+  if (code.includes(needleLogoRow)) {
+    code = code.replace(needleLogoRow, replacementLogoRow)
+  }
+
+  if (isCRLF) {
+    code = code.replace(/\n/g, '\r\n')
+  }
+
+  writeFileSync(cssPath, code, 'utf8')
+  console.log(`patch-upstream: successfully patched ${cssPath}`)
+
+  const staleLibDir = join(sourceDir, 'packages/client/ui-sidebar/lib')
+  if (existsSync(staleLibDir)) {
+    console.log(`patch-upstream: removing stale ${staleLibDir}`)
+    rmSync(staleLibDir, { recursive: true, force: true })
+  }
+}
+
 patchClientModules(sourceDir)
 patchAgentPresetsDiscovery(sourceDir)
 patchSessionControllerAgent(sourceDir)
 patchLlmDiscovery(sourceDir)
 patchUiConversationRoot(sourceDir)
+patchUiSidebar(sourceDir)

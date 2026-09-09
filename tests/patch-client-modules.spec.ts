@@ -335,4 +335,41 @@ export async function discoverModels(request: ModelDiscoveryRequest): Promise<Di
     expect(patched).toContain("console.error('[ui-conversation] selectWorkspace failed:', error)")
     expect(existsSync(join(rootLibDir, 'stale.js'))).toBe(false)
   })
+
+  it('correctly applies brand cleaning patch to ui-sidebar SidebarRoot.module.css', () => {
+    const sidebarDir = join(tempDir, 'packages/client/ui-sidebar/src/client')
+    const sidebarLibDir = join(tempDir, 'packages/client/ui-sidebar/lib')
+    mkdirSync(sidebarDir, { recursive: true })
+    mkdirSync(sidebarLibDir, { recursive: true })
+    writeFileSync(join(sidebarLibDir, 'stale.js'), '// stale')
+
+    const sampleSidebarCss = `
+.logoRow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  height: 60px;
+  padding: 8px 0 8px 4px;
+  margin-bottom: 8px;
+}
+
+.brand {
+  flex: 1;
+}
+`
+    const cssFile = join(sidebarDir, 'SidebarRoot.module.css')
+    writeFileSync(cssFile, sampleSidebarCss, 'utf8')
+
+    const stdout = execFileSync(process.execPath, [patchScript, tempDir], { encoding: 'utf8' })
+    expect(stdout).toContain('successfully patched')
+
+    const patched = readFileSync(cssFile, 'utf8')
+    expect(patched).toContain('.brand {\n  display: none;\n  flex: 1;')
+    expect(patched).toContain('height: 40px;')
+    expect(patched).toContain('margin-bottom: 4px;')
+    expect(existsSync(join(sidebarLibDir, 'stale.js'))).toBe(false)
+  })
 })
+

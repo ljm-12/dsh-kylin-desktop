@@ -372,6 +372,24 @@ async function boot(): Promise<void> {
       const lvl = levels[level] ?? 'LOG'
       writeLog('stdout', `[renderer ${lvl}] (${sourceId}:${line}) ${message}`)
     })
+
+    const injectCleanUiCss = (): void => {
+      window.webContents.insertCSS(`
+        /* Hide redundant sidebar brand mark and name in expanded desktop sidebar */
+        button[class*="brand"][class*="wide"],
+        [class*="brandIdentity"] {
+          display: none !important;
+        }
+        [class*="logoRow"]:not([class*="collapsed"] *) {
+          height: 40px !important;
+          margin-bottom: 4px !important;
+          padding: 4px 0 4px 4px !important;
+        }
+      `).catch(() => {})
+    }
+    window.webContents.on('did-finish-load', injectCleanUiCss)
+    window.webContents.on('dom-ready', injectCleanUiCss)
+
     window.once('ready-to-show', () => {
       console.log('[deepseek-harness] Browser window ready to show, revealing window')
       window.show()
