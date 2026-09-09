@@ -8,17 +8,20 @@ on:
         required: true
         default: dsh-v0.1.3-alpha.2
         type: string
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
 
 concurrency:
-  group: build-kylin-arm64-desktop-${{ inputs.dsh_ref }}
+  group: build-kylin-arm64-desktop-${{ inputs.dsh_ref || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   build:
-    name: ${{ inputs.dsh_ref }} / linux-arm64
+    name: ${{ inputs.dsh_ref || 'dsh-v0.1.3-alpha.2' }} / linux-arm64
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     steps:
@@ -31,7 +34,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: deepseek-ai/deepseek-harness
-          ref: ${{ inputs.dsh_ref }}
+          ref: ${{ inputs.dsh_ref || 'dsh-v0.1.3-alpha.2' }}
           fetch-depth: 0
           persist-credentials: false
           path: upstream
@@ -70,7 +73,7 @@ jobs:
         id: source
         working-directory: upstream
         env:
-          DSH_REF: ${{ inputs.dsh_ref }}
+          DSH_REF: ${{ inputs.dsh_ref || 'dsh-v0.1.3-alpha.2' }}
         run: |
           set -euo pipefail
           case "$DSH_REF" in
@@ -85,7 +88,7 @@ jobs:
 
       - name: Build and verify the Kylin artifacts
         env:
-          DSH_REF: ${{ inputs.dsh_ref }}
+          DSH_REF: ${{ inputs.dsh_ref || 'dsh-v0.1.3-alpha.2' }}
         run: >-
           bash packaging-source/scripts/build-on-arm64.sh
           "$GITHUB_WORKSPACE/upstream"
