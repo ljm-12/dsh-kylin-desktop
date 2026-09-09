@@ -150,8 +150,16 @@ export async function scanRoot(root: PresetRoot, harnessBase: string): Promise<A
     if (!child.isDirectory() || !PRESET_ID.test(child.name)) continue
     const directory = join(dir, child.name)
     const path = join(directory, COMPOSITION_FILE)
+    const metadata = await readPresetMetadata(directory)
+    found.push({
+      id: child.name, trust: root.trust, path, ...metadata,
+      ...broken === undefined ? {} : { broken },
+    })
   }
-  return found
+  return found.sort((left, right) => {
+    const byOrder = (left.order ?? Number.POSITIVE_INFINITY) - (right.order ?? Number.POSITIVE_INFINITY)
+    return byOrder === 0 ? left.id.localeCompare(right.id) : byOrder
+  })
 }
 `
     const discoveryFile = join(presetSrcDir, 'discovery.ts')
@@ -164,6 +172,8 @@ export async function scanRoot(root: PresetRoot, harnessBase: string): Promise<A
     expect(patched).toContain("typeof child === 'string' ? child : child?.name")
     expect(patched).toContain("typeof child.isDirectory === 'function'")
     expect(patched).toContain('(await stat(join(dir, name)).catch(() => null))?.isDirectory() === true')
+    expect(patched).toContain('id: name, trust: root.trust')
+    expect(patched).toContain("(left.id || '').localeCompare(right.id || '')")
 
     // Stale lib/ removed
     expect(existsSync(join(presetLibDir, 'stale.js'))).toBe(false)

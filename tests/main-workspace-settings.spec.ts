@@ -123,5 +123,46 @@ llm-pi-ai:
       expect(healedSettings).toContain('model: DeepSeek-V4-Flash-0731-w4a8')
       expect(healedSettings).toContain('id: local-model')
     })
+
+    it('converts list-based providers to dict-based providers', () => {
+      const input = `
+llm-pi-ai:
+  providers:
+    - id: intranet-openai
+      name: 局域网大模型
+      api: openai-completions
+      baseURL: http://192.168.0.40:3000/v1
+`
+      const healed = healSettingsYaml(input)
+      expect(healed).toContain('providers:\n    intranet-openai:\n      displayName: 局域网大模型')
+    })
+
+    it('pre-seeds default workspace even when workspace.json already has other workspaces', () => {
+      const dshHome = join(tempDir, 'runtime-home')
+      const workspaceDir = join(tempDir, 'AgentWorkspace')
+      mkdirSync(join(dshHome, 'storages'), { recursive: true })
+
+      const existingData = {
+        unit: { name: 'workspace', version: 2 },
+        global: { initialized: true, workspaceIds: ['existing-ws-1'], archivedSessionIds: [] },
+        tables: {
+          workspaces: {
+            'existing-ws-1': {
+              path: '/some/other/workspace',
+              title: 'other',
+              sessionIds: [],
+            },
+          },
+        },
+      }
+      writeFileSync(join(dshHome, 'storages', 'workspace.json'), JSON.stringify(existingData, null, 2), 'utf8')
+
+      ensureInitialWorkspaceAndSettings(dshHome, workspaceDir)
+
+      const updated = JSON.parse(readFileSync(join(dshHome, 'storages', 'workspace.json'), 'utf8'))
+      expect(updated.global.workspaceIds.length).toBe(2)
+      const values = Object.values(updated.tables.workspaces) as Array<{ path: string; title: string }>
+      expect(values.some(v => v.path === workspaceDir)).toBe(true)
+    })
   })
 })

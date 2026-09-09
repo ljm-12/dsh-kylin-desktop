@@ -232,16 +232,16 @@ function patchAgentPresetsDiscovery(sourceDir) {
   const isCRLF = code.includes('\r\n')
   code = code.replace(/\r\n/g, '\n')
 
-  if (code.includes('typeof child === \'string\' ? child : child?.name')) {
+  if (code.includes("typeof child === 'string' ? child : child?.name") && code.includes('id: name, trust: root.trust')) {
     console.log('patch-upstream: discovery.ts already patched, skipping.')
     return
   }
 
-  const needle = `  for (const child of children) {
+  const needle1 = `  for (const child of children) {
     if (!child.isDirectory() || !PRESET_ID.test(child.name)) continue
     const directory = join(dir, child.name)`
 
-  const replacement = `  for (const child of children) {
+  const replacement1 = `  for (const child of children) {
     const name = typeof child === 'string' ? child : child?.name
     if (typeof name !== 'string' || !PRESET_ID.test(name)) continue
     const isDir = typeof child === 'object' && child !== null && typeof child.isDirectory === 'function'
@@ -250,12 +250,31 @@ function patchAgentPresetsDiscovery(sourceDir) {
     if (!isDir) continue
     const directory = join(dir, name)`
 
-  if (!code.includes(needle)) {
+  if (!code.includes(needle1) && !code.includes("typeof child === 'string' ? child : child?.name")) {
     console.warn('patch-upstream: could not find scanRoot needle in discovery.ts')
     return
   }
 
-  code = code.replace(needle, replacement)
+  if (code.includes(needle1)) {
+    code = code.replace(needle1, replacement1)
+  }
+
+  const needle2 = `    found.push({
+      id: child.name, trust: root.trust, path, ...metadata,`
+
+  const replacement2 = `    found.push({
+      id: name, trust: root.trust, path, ...metadata,`
+
+  if (code.includes(needle2)) {
+    code = code.replace(needle2, replacement2)
+  }
+
+  const needle3 = `return byOrder === 0 ? left.id.localeCompare(right.id) : byOrder`
+  const replacement3 = `return byOrder === 0 ? (left.id || '').localeCompare(right.id || '') : byOrder`
+  if (code.includes(needle3)) {
+    code = code.replace(needle3, replacement3)
+  }
+
   if (isCRLF) {
     code = code.replace(/\n/g, '\r\n')
   }

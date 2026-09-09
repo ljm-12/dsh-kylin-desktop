@@ -86,8 +86,8 @@ export const DEFAULT_SETTINGS_YAML = `agent-default-model:
   model: DeepSeek-V4-Flash-0731-w4a8
 llm-pi-ai:
   providers:
-    - id: intranet-openai
-      name: 局域网大模型
+    intranet-openai:
+      displayName: 局域网大模型
       api: openai-completions
       baseURL: http://192.168.0.40:3000/v1
       apiKey: sk-no-key-required
@@ -127,11 +127,39 @@ export function healSettingsYaml(rawYaml: string): string {
     )
   }
 
+  // 5. Convert list-based providers (- id: intranet-openai) to dict-based providers (intranet-openai:)
+  if (/providers:\s*\n\s*-\s*id:\s*intranet-openai/.test(healed)) {
+    healed = healed.replace(
+      /providers:\s*\n\s*-\s*id:\s*intranet-openai\s*\n\s*(?:name|displayName):\s*([^\n]+)/g,
+      'providers:\n    intranet-openai:\n      displayName: $1',
+    )
+    healed = healed.replace(
+      /(providers:\s*\n\s*intranet-openai:\s*\n[\s\S]*?)(?=\n\S|$)/,
+      (block) => {
+        return block
+          .split('\n')
+          .map(line => {
+            if (/^ {4}(api|baseURL|apiKey|models|headers):/.test(line)) {
+              return '  ' + line
+            }
+            return line
+          })
+          .join('\n')
+      },
+    )
+  }
+
   return healed
 }
 
 export function ensureInitialWorkspaceAndSettings(dshHome: string, workspace: string): void {
-  // 1. Ensure default workspace pre-seeding
+  // 1. Ensure default workspace pre-seeding and workspace directory existence
+  try {
+    mkdirSync(workspace, { recursive: true, mode: 0o755 })
+  } catch {
+    // Keep going if directory already exists or permission denied
+  }
+
   const storagesDir = join(dshHome, 'storages')
   mkdirSync(storagesDir, { recursive: true, mode: 0o700 })
   const workspaceJsonPath = join(storagesDir, 'workspace.json')
@@ -154,18 +182,17 @@ export function ensureInitialWorkspaceAndSettings(dshHome: string, workspace: st
       if (typeof workspacesMap === 'object' && workspacesMap !== null) {
         const values = Object.values(workspacesMap)
         const hasWorkspace = values.some(v => v?.path === canonicalWorkspace || v?.path === workspace)
-        if (!hasWorkspace && values.length === 0) {
+        if (!hasWorkspace) {
           const id = randomUUID()
           const now = new Date().toISOString()
           data.tables = data.tables ?? {}
-          data.tables.workspaces = {
-            [id]: {
-              path: canonicalWorkspace,
-              title: basename(canonicalWorkspace) || 'AgentWorkspace',
-              sessionIds: [],
-              createdAt: now,
-              updatedAt: now,
-            },
+          data.tables.workspaces = data.tables.workspaces ?? {}
+          data.tables.workspaces[id] = {
+            path: canonicalWorkspace,
+            title: basename(canonicalWorkspace) || 'AgentWorkspace',
+            sessionIds: [],
+            createdAt: now,
+            updatedAt: now,
           }
           if (Array.isArray(data.global?.workspaceIds)) {
             data.global.workspaceIds.push(id)
