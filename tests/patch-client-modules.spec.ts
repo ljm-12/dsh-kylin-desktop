@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -128,5 +128,44 @@ describe('Upstream client modules patcher', () => {
     // 6. Idempotent re-run
     const stdout2 = execFileSync(process.execPath, [patchScript, tempDir], { encoding: 'utf8' })
     expect(stdout2).toContain('already patched, skipping')
+  })
+
+  it('correctly applies SEA VFS compatibility patch to agent-presets discovery.ts', () => {
+    const modulesDir = join(tempDir, 'packages/client/modules/src')
+    mkdirSync(modulesDir, { recursive: true })
+    writeFileSync(join(modulesDir, 'index.ts'), sampleUpstreamIndexTs, 'utf8')
+
+    const presetSrcDir = join(tempDir, 'packages/preset/agent-presets/src')
+    const presetLibDir = join(tempDir, 'packages/preset/agent-presets/lib')
+    mkdirSync(presetSrcDir, { recursive: true })
+    mkdirSync(presetLibDir, { recursive: true })
+    writeFileSync(join(presetLibDir, 'stale.js'), '// stale')
+
+    const sampleDiscoveryTs = `
+export async function scanRoot(root: PresetRoot, harnessBase: string): Promise<AgentPreset[]> {
+  const dir = resolve(expandHomePath(root.path))
+  let children = await readdir(dir, { withFileTypes: true })
+  const found: AgentPreset[] = []
+  for (const child of children) {
+    if (!child.isDirectory() || !PRESET_ID.test(child.name)) continue
+    const directory = join(dir, child.name)
+    const path = join(directory, COMPOSITION_FILE)
+  }
+  return found
+}
+`
+    const discoveryFile = join(presetSrcDir, 'discovery.ts')
+    writeFileSync(discoveryFile, sampleDiscoveryTs, 'utf8')
+
+    const stdout = execFileSync(process.execPath, [patchScript, tempDir], { encoding: 'utf8' })
+    expect(stdout).toContain('successfully patched')
+
+    const patched = readFileSync(discoveryFile, 'utf8')
+    expect(patched).toContain("typeof child === 'string' ? child : child?.name")
+    expect(patched).toContain("typeof child.isDirectory === 'function'")
+    expect(patched).toContain('(await stat(join(dir, name)).catch(() => null))?.isDirectory() === true')
+
+    // Stale lib/ removed
+    expect(existsSync(join(presetLibDir, 'stale.js'))).toBe(false)
   })
 })

@@ -8,27 +8,28 @@ if (!sourceDir) {
   process.exit(1)
 }
 
-const targetPath = resolve(sourceDir, 'packages/client/modules/src/index.ts')
-if (!existsSync(targetPath)) {
-  console.error(`patch-upstream-client-modules: target file not found at ${targetPath}`)
-  process.exit(1)
-}
+function patchClientModules(sourceDir) {
+  const targetPath = resolve(sourceDir, 'packages/client/modules/src/index.ts')
+  if (!existsSync(targetPath)) {
+    console.error(`patch-upstream-client-modules: target file not found at ${targetPath}`)
+    process.exit(1)
+  }
 
-let code = readFileSync(targetPath, 'utf8')
-const isCRLF = code.includes('\r\n')
-code = code.replace(/\r\n/g, '\n')
+  let code = readFileSync(targetPath, 'utf8')
+  const isCRLF = code.includes('\r\n')
+  code = code.replace(/\r\n/g, '\n')
 
-if (code.includes('resolveLoaderShape') && code.includes('moduleFallbackTarget')) {
-  console.log('patch-upstream-client-modules: already patched, skipping.')
-  process.exit(0)
-}
+  if (code.includes('resolveLoaderShape') && code.includes('moduleFallbackTarget')) {
+    console.log('patch-upstream-client-modules: already patched, skipping.')
+    return
+  }
 
-// 1. Add loaderShape state and probe methods
-const needle1 = `  // Resolution is entry-local: the same specifier can resolve differently in
+  // 1. Add loaderShape state and probe methods
+  const needle1 = `  // Resolution is entry-local: the same specifier can resolve differently in
   // separate config trees. Negative verdicts remain stable until restart.
   private readonly pkgMeta = new Map<string, ResolvedPkgMeta | null>()`
 
-const replacement1 = `  // Resolution is entry-local: the same specifier can resolve differently in
+  const replacement1 = `  // Resolution is entry-local: the same specifier can resolve differently in
   // separate config trees. Negative verdicts remain stable until restart.
   private readonly pkgMeta = new Map<string, ResolvedPkgMeta | null>()
   /** Cached Node internal loader resolveSync shape (v1: \`(specifier, parentURL, attrs)\`, v2: \`(parentURL, request)\`). */
@@ -61,14 +62,14 @@ const replacement1 = `  // Resolution is entry-local: the same specifier can res
     }
   }`
 
-if (!code.includes(needle1)) {
-  console.error('patch-upstream-client-modules: failed to find needle 1 in ClientModuleRegistry')
-  process.exit(1)
-}
-code = code.replace(needle1, replacement1)
+  if (!code.includes(needle1)) {
+    console.error('patch-upstream-client-modules: failed to find needle 1 in ClientModuleRegistry')
+    process.exit(1)
+  }
+  code = code.replace(needle1, replacement1)
 
-// 2. Patch locatePkgJson with loader shape probe, dual fallback, and warning on failure
-const needle2 = `    let moduleUrl: string
+  // 2. Patch locatePkgJson with loader shape probe, dual fallback, and warning on failure
+  const needle2 = `    let moduleUrl: string
     try {
       moduleUrl = internal.version === 'v2'
         ? internal.resolveSync(baseUrl, { specifier: loaderName, attributes: {} }).url
@@ -79,7 +80,7 @@ const needle2 = `    let moduleUrl: string
       return undefined
     }`
 
-const replacement2 = `    let moduleUrl: string
+  const replacement2 = `    let moduleUrl: string
     try {
       const shape = this.resolveLoaderShape(internal)
       if (shape === 'v2') {
@@ -106,14 +107,14 @@ const replacement2 = `    let moduleUrl: string
       return undefined
     }`
 
-if (!code.includes(needle2)) {
-  console.error('patch-upstream-client-modules: failed to find needle 2 in locatePkgJson')
-  process.exit(1)
-}
-code = code.replace(needle2, replacement2)
+  if (!code.includes(needle2)) {
+    console.error('patch-upstream-client-modules: failed to find needle 2 in locatePkgJson')
+    process.exit(1)
+  }
+  code = code.replace(needle2, replacement2)
 
-// 3. Patch resolveMeta to follow moduleFallback proxy targets in SEA environments
-const needle3 = `    const { packageName, path: pkgPath } = located
+  // 3. Patch resolveMeta to follow moduleFallback proxy targets in SEA environments
+  const needle3 = `    const { packageName, path: pkgPath } = located
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     const dsh = pkg.dsh
     const decl = parseDshClient(
@@ -135,7 +136,7 @@ const needle3 = `    const { packageName, path: pkgPath } = located
       immediately: decl.immediately === true,
     }`
 
-const replacement3 = `    const { packageName, path: pkgPath } = located
+  const replacement3 = `    const { packageName, path: pkgPath } = located
     let targetManifestPath = pkgPath
     let pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     let dsh = pkg.dsh
@@ -172,21 +173,21 @@ const replacement3 = `    const { packageName, path: pkgPath } = located
       immediately: decl.immediately === true,
     }`
 
-if (!code.includes(needle3)) {
-  console.error('patch-upstream-client-modules: failed to find needle 3 in resolveMeta')
-  process.exit(1)
-}
-code = code.replace(needle3, replacement3)
+  if (!code.includes(needle3)) {
+    console.error('patch-upstream-client-modules: failed to find needle 3 in resolveMeta')
+    process.exit(1)
+  }
+  code = code.replace(needle3, replacement3)
 
-// 4. Patch nearestPackage to accept URLs and absolute snapshot paths
-const needle4 = `  private nearestPackage(
+  // 4. Patch nearestPackage to accept URLs and absolute snapshot paths
+  const needle4 = `  private nearestPackage(
     moduleUrl: string,
     expectedPackageName?: string,
   ): { path: string; packageName: string } | undefined {
     if (!moduleUrl.startsWith('file:')) return undefined
     let dir = dirname(fileURLToPath(moduleUrl))`
 
-const replacement4 = `  private nearestPackage(
+  const replacement4 = `  private nearestPackage(
     moduleUrl: string,
     expectedPackageName?: string,
   ): { path: string; packageName: string } | undefined {
@@ -198,22 +199,76 @@ const replacement4 = `  private nearestPackage(
     if (fileUrl === undefined) return undefined
     let dir = dirname(fileURLToPath(fileUrl))`
 
-if (!code.includes(needle4)) {
-  console.error('patch-upstream-client-modules: failed to find needle 4 in nearestPackage')
-  process.exit(1)
-}
-code = code.replace(needle4, replacement4)
+  if (!code.includes(needle4)) {
+    console.error('patch-upstream-client-modules: failed to find needle 4 in nearestPackage')
+    process.exit(1)
+  }
+  code = code.replace(needle4, replacement4)
 
-if (isCRLF) {
-  code = code.replace(/\n/g, '\r\n')
+  if (isCRLF) {
+    code = code.replace(/\n/g, '\r\n')
+  }
+
+  writeFileSync(targetPath, code, 'utf8')
+  console.log(`patch-upstream-client-modules: successfully patched ${targetPath}`)
+
+  // 5. Remove stale lib/ build output if present so pnpm build recompiles clean
+  const staleLibDir = join(sourceDir, 'packages/client/modules/lib')
+  if (existsSync(staleLibDir)) {
+    console.log(`patch-upstream-client-modules: removing stale ${staleLibDir}`)
+    rmSync(staleLibDir, { recursive: true, force: true })
+  }
 }
 
-writeFileSync(targetPath, code, 'utf8')
-console.log(`patch-upstream-client-modules: successfully patched ${targetPath}`)
+// 6. Patch agent-presets discovery.ts for SEA VFS string/Dirent compatibility
+function patchAgentPresetsDiscovery(sourceDir) {
+  const discoveryPath = resolve(sourceDir, 'packages/preset/agent-presets/src/discovery.ts')
+  if (!existsSync(discoveryPath)) {
+    console.log(`patch-upstream: discovery file not found at ${discoveryPath}, skipping preset patch.`)
+    return
+  }
 
-// 5. Remove stale lib/ build output if present so pnpm build recompiles clean
-const staleLibDir = join(sourceDir, 'packages/client/modules/lib')
-if (existsSync(staleLibDir)) {
-  console.log(`patch-upstream-client-modules: removing stale ${staleLibDir}`)
-  rmSync(staleLibDir, { recursive: true, force: true })
+  let code = readFileSync(discoveryPath, 'utf8')
+  const isCRLF = code.includes('\r\n')
+  code = code.replace(/\r\n/g, '\n')
+
+  if (code.includes('typeof child === \'string\' ? child : child?.name')) {
+    console.log('patch-upstream: discovery.ts already patched, skipping.')
+    return
+  }
+
+  const needle = `  for (const child of children) {
+    if (!child.isDirectory() || !PRESET_ID.test(child.name)) continue
+    const directory = join(dir, child.name)`
+
+  const replacement = `  for (const child of children) {
+    const name = typeof child === 'string' ? child : child?.name
+    if (typeof name !== 'string' || !PRESET_ID.test(name)) continue
+    const isDir = typeof child === 'object' && child !== null && typeof child.isDirectory === 'function'
+      ? child.isDirectory()
+      : (await stat(join(dir, name)).catch(() => null))?.isDirectory() === true
+    if (!isDir) continue
+    const directory = join(dir, name)`
+
+  if (!code.includes(needle)) {
+    console.warn('patch-upstream: could not find scanRoot needle in discovery.ts')
+    return
+  }
+
+  code = code.replace(needle, replacement)
+  if (isCRLF) {
+    code = code.replace(/\n/g, '\r\n')
+  }
+
+  writeFileSync(discoveryPath, code, 'utf8')
+  console.log(`patch-upstream: successfully patched ${discoveryPath}`)
+
+  const staleLibDir = join(sourceDir, 'packages/preset/agent-presets/lib')
+  if (existsSync(staleLibDir)) {
+    console.log(`patch-upstream: removing stale ${staleLibDir}`)
+    rmSync(staleLibDir, { recursive: true, force: true })
+  }
 }
+
+patchClientModules(sourceDir)
+patchAgentPresetsDiscovery(sourceDir)

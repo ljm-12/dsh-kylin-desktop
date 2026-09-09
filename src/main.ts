@@ -2,7 +2,7 @@ import { createWriteStream, existsSync, mkdirSync, type WriteStream } from 'node
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { finished } from 'node:stream/promises'
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, Menu } from 'electron'
 import { desktopCopy } from './locales.js'
 import { createRuntimeEnvironment, RuntimeProcess, type RuntimeExit } from './runtime-process.js'
 import { resolveRuntimeFiles, verifyExecutable } from './runtime-files.js'
@@ -163,6 +163,7 @@ async function boot(): Promise<void> {
     console.log('[deepseek-harness] Starting runtime and awaiting readiness...')
     const url = await owned.start()
     console.log(`[deepseek-harness] Runtime ready at: ${url.origin}`)
+    Menu.setApplicationMenu(null)
     console.log('[deepseek-harness] Creating main browser window...')
     const window = new BrowserWindow({
       title: copy.appTitle,
@@ -171,6 +172,7 @@ async function boot(): Promise<void> {
       minWidth: 960,
       minHeight: 640,
       show: false,
+      autoHideMenuBar: true,
       backgroundColor: '#101114',
       webPreferences: {
         contextIsolation: true,
@@ -178,6 +180,7 @@ async function boot(): Promise<void> {
         sandbox: false,
       },
     })
+    window.setMenu(null)
 
     mainWindow = window
     keepNavigationOnOrigin(window, url)

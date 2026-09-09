@@ -56,10 +56,14 @@ if command -v kysec_set >/dev/null 2>&1; then
     "/opt/DeepSeek Harness Kylin/deepseek-harness-kylin" \
     "/opt/DeepSeek Harness Kylin/chrome-sandbox" \
     "/opt/DeepSeek Harness Kylin/resources/runtime/deepseek-harness-sdk-runtime-linux-arm64" \
-    "/opt/DeepSeek Harness Kylin/resources/runtime/ripgrep"; do
+    "${RUNTIME_TARGET}-rg"; do
     if [ -f "$target_bin" ]; then
-      kysec_set -n exectl -m add -t "$target_bin" 2>/dev/null || true
-      kysec_set -n appctl -m add -t "$target_bin" 2>/dev/null || true
+      if ! kysec_set -n exectl -m add -t "$target_bin"; then
+        echo "[deb-postinstall] WARNING: KySec exectl registration failed for $target_bin. Check this system's kysec_set --help and Security Center execution-control policy." >&2
+      fi
+      if ! kysec_set -n appctl -m add -t "$target_bin"; then
+        echo "[deb-postinstall] WARNING: KySec appctl registration failed for $target_bin. Check this system's kysec_set --help and Security Center application policy." >&2
+      fi
     fi
   done
 fi
