@@ -4,7 +4,7 @@
 - id: agent-default-model
   config:
     provider: intranet-openai
-    model: local-model
+    model: DeepSeek-V4-Flash-0731-w4a8
 
 - id: llm-pi-ai
   config:
@@ -13,8 +13,12 @@
         displayName: 内网 OpenAI 兼容服务
         apiKeyEnv: INTRANET_AGENT_API_KEY
         api: openai-completions
-        baseURL: http://127.0.0.1:8000/v1
+        baseURL: http://192.168.0.40:3000/v1
         models:
+          - id: DeepSeek-V4-Flash-0731-w4a8
+            name: DeepSeek-V4-Flash-0731-w4a8
+            contextWindow: 131072
+            maxTokens: 8192
           - id: local-model
             name: local-model
             contextWindow: 131072

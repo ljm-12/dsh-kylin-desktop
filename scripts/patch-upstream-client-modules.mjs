@@ -11,8 +11,8 @@ if (!sourceDir) {
 function patchClientModules(sourceDir) {
   const targetPath = resolve(sourceDir, 'packages/client/modules/src/index.ts')
   if (!existsSync(targetPath)) {
-    console.error(`patch-upstream-client-modules: target file not found at ${targetPath}`)
-    process.exit(1)
+    console.log(`patch-upstream-client-modules: target file not found at ${targetPath}, skipping.`)
+    return
   }
 
   let code = readFileSync(targetPath, 'utf8')
@@ -270,5 +270,312 @@ function patchAgentPresetsDiscovery(sourceDir) {
   }
 }
 
+// 7. Patch session-controller agent.ts for self-healing default model resolution
+function patchSessionControllerAgent(sourceDir) {
+  const agentPath = resolve(sourceDir, 'packages/api/session-controller/src/agent.ts')
+  if (!existsSync(agentPath)) {
+    console.log(`patch-upstream: agent file not found at ${agentPath}, skipping session-controller patch.`)
+    return
+  }
+
+  let code = readFileSync(agentPath, 'utf8')
+  const isCRLF = code.includes('\r\n')
+  code = code.replace(/\r\n/g, '\n')
+
+  if (code.includes('resolvedFallbackSelection')) {
+    console.log('patch-upstream: agent.ts already patched, skipping.')
+    return
+  }
+
+  const needleOptions = `  private agentOptions(): AgentOptions {
+    const { provider, model } = this.ctx.agentDefaultModel.currentSelection()
+    return { provider, model }
+  }`
+
+  const replacementOptions = `  private resolvedFallbackSelection?: AgentModelSelection
+
+  private async agentOptions(): Promise<AgentOptions> {
+    const selection = this.ctx.agentDefaultModel.currentSelection()
+    try {
+      if (this.ctx.llm) {
+        await this.ctx.llm.resolveModelInfo(selection.provider, selection.model)
+        return { provider: selection.provider, model: selection.model }
+      }
+    } catch {
+      try {
+        const providers = this.ctx.llm?.listProviders?.() ?? []
+        for (const provider of providers) {
+          try {
+            const models = await this.ctx.llm.listModels(provider.id)
+            if (models.length > 0) {
+              const fallback: AgentModelSelection = { provider: provider.id, model: models[0].id }
+              this.resolvedFallbackSelection = fallback
+              void this.ctx.agentDefaultModel.saveSelection(fallback).catch(() => {})
+              return fallback
+            }
+          } catch {
+            continue
+          }
+        }
+      } catch {
+        // Fallback discovery failed
+      }
+    }
+    return { provider: selection.provider, model: selection.model }
+  }`
+
+  if (!code.includes(needleOptions)) {
+    console.warn('patch-upstream: could not find agentOptions needle in agent.ts')
+    return
+  }
+
+  code = code.replace(needleOptions, replacementOptions)
+  // Replace the 3 call sites: resumeObserved, createOrAdopt (resume), createOrAdopt (create)
+  code = code.replaceAll('agentOptions: this.agentOptions(),', 'agentOptions: await this.agentOptions(),')
+
+  const needleSelection = `        const loggedHeader = agent.session.requestHeader()
+        if (loggedHeader === undefined) return defaultModel.currentSelection()`
+
+  const replacementSelection = `        const loggedHeader = agent.session.requestHeader()
+        if (loggedHeader === undefined) return this.resolvedFallbackSelection ?? defaultModel.currentSelection()`
+
+  if (code.includes(needleSelection)) {
+    code = code.replace(needleSelection, replacementSelection)
+  }
+
+  if (isCRLF) {
+    code = code.replace(/\n/g, '\r\n')
+  }
+
+  writeFileSync(agentPath, code, 'utf8')
+  console.log(`patch-upstream: successfully patched ${agentPath}`)
+
+  const staleLibDir = join(sourceDir, 'packages/api/session-controller/lib')
+  if (existsSync(staleLibDir)) {
+    console.log(`patch-upstream: removing stale ${staleLibDir}`)
+    rmSync(staleLibDir, { recursive: true, force: true })
+  }
+}
+
+// 8. Patch llm-pi-ai discovery.ts to automatically fall back to /v1/models for OpenAI-compatible endpoints
+function patchLlmDiscovery(sourceDir) {
+  const discoveryPath = resolve(sourceDir, 'packages/llm/llm-pi-ai/src/discovery.ts')
+  if (!existsSync(discoveryPath)) {
+    console.log(`patch-upstream: discovery file not found at ${discoveryPath}, skipping llm discovery patch.`)
+    return
+  }
+
+  let code = readFileSync(discoveryPath, 'utf8')
+  const isCRLF = code.includes('\r\n')
+  code = code.replace(/\r\n/g, '\n')
+
+  if (code.includes('candidateUrls')) {
+    console.log('patch-upstream: discovery.ts already patched, skipping.')
+    return
+  }
+
+  const needle = `  const url = listingUrl(request.baseURL, api)
+  // A key typed into the form wins: it may replace the stored key that is
+  // failing. The stored profile is asked past the catalog and protocol checks,
+  // and its credential resolver remains lazy so a typed key cannot fail over a
+  // stored credential it supersedes. A route may still authenticate through a
+  // deployment-owned Authorization header when neither key exists.
+  const stored = storedProfile?.()
+  const supplied = request.apiKey ?? await stored?.resolveApiKey()
+  const apiKey = supplied === undefined ? undefined : usableProbeKey(supplied)
+  let response: Response
+  try {
+    const headers = new Headers(stored?.headers === undefined ? undefined : Object.entries(stored.headers))
+    headers.set('accept', 'application/json')
+    if (api === 'anthropic-messages') {
+      headers.set('anthropic-version', ANTHROPIC_VERSION)
+      if (apiKey !== undefined) headers.set('x-api-key', apiKey)
+    } else if (apiKey !== undefined) {
+      headers.set('authorization', \`Bearer \${apiKey}\`)
+    }
+    for (const [name, value] of Object.entries(attributionHeaders())) headers.set(name, value)
+    response = await fetch(url, {
+      method: 'GET',
+      headers,
+      ...request.signal === undefined ? {} : { signal: request.signal },
+    })
+  } catch (error: unknown) {
+    if (request.signal?.aborted) {
+      throw new LlmError('model discovery aborted by caller', 'ABORTED', { cause: error })
+    }
+    throw new LlmError(\`could not reach \${url}\`, 'DISCOVERY_FAILED', { cause: error })
+  }
+  if (!response.ok) {
+    throw new LlmError(
+      \`\${url} answered \${response.status}\${response.status === 401 || response.status === 403 ? '; check the API key' : ''}\`,
+      'DISCOVERY_FAILED',
+    )
+  }
+  let text: string
+  try {
+    text = await readBounded(response, url)
+  } catch (error: unknown) {
+    // Cancellation during the body read rejects with the abort reason, which
+    // may be any value; the caller gets the same coded failure it would have
+    // for a cancellation before the request went out.
+    if (request.signal?.aborted) {
+      throw new LlmError('model discovery aborted by caller', 'ABORTED', { cause: error })
+    }
+    throw error
+  }
+  let body: unknown
+  try {
+    body = JSON.parse(text)
+  } catch (error: unknown) {
+    throw new LlmError(\`\${url} did not answer with JSON\`, 'DISCOVERY_FAILED', { cause: error })
+  }
+  return readListing(body)`
+
+  const replacement = `  const primaryUrl = listingUrl(request.baseURL, api)
+  const candidateUrls = [primaryUrl]
+  if (api !== 'anthropic-messages') {
+    const baseClean = request.baseURL.replace(/\\/+$/, '')
+    if (!baseClean.endsWith('/v1')) {
+      candidateUrls.push(\`\${baseClean}/v1/models\`)
+    }
+  }
+
+  let lastError: unknown
+  for (const url of candidateUrls) {
+    try {
+      const stored = storedProfile?.()
+      const supplied = request.apiKey ?? await stored?.resolveApiKey()
+      const apiKey = supplied === undefined ? undefined : usableProbeKey(supplied)
+      let response: Response
+      try {
+        const headers = new Headers(stored?.headers === undefined ? undefined : Object.entries(stored.headers))
+        headers.set('accept', 'application/json')
+        if (api === 'anthropic-messages') {
+          headers.set('anthropic-version', ANTHROPIC_VERSION)
+          if (apiKey !== undefined) headers.set('x-api-key', apiKey)
+        } else if (apiKey !== undefined) {
+          headers.set('authorization', \`Bearer \${apiKey}\`)
+        }
+        for (const [name, value] of Object.entries(attributionHeaders())) headers.set(name, value)
+        response = await fetch(url, {
+          method: 'GET',
+          headers,
+          ...request.signal === undefined ? {} : { signal: request.signal },
+        })
+      } catch (error: unknown) {
+        if (request.signal?.aborted) {
+          throw new LlmError('model discovery aborted by caller', 'ABORTED', { cause: error })
+        }
+        throw new LlmError(\`could not reach \${url}\`, 'DISCOVERY_FAILED', { cause: error })
+      }
+      if (!response.ok) {
+        throw new LlmError(
+          \`\${url} answered \${response.status}\${response.status === 401 || response.status === 403 ? '; check the API key' : ''}\`,
+          'DISCOVERY_FAILED',
+        )
+      }
+      let text: string
+      try {
+        text = await readBounded(response, url)
+      } catch (error: unknown) {
+        if (request.signal?.aborted) {
+          throw new LlmError('model discovery aborted by caller', 'ABORTED', { cause: error })
+        }
+        throw error
+      }
+      let body: unknown
+      try {
+        body = JSON.parse(text)
+      } catch (error: unknown) {
+        throw new LlmError(\`\${url} did not answer with JSON\`, 'DISCOVERY_FAILED', { cause: error })
+      }
+      return readListing(body)
+    } catch (error) {
+      lastError = error
+      if (candidateUrls.indexOf(url) < candidateUrls.length - 1) {
+        continue
+      }
+      throw error
+    }
+  }
+  throw lastError`
+
+  if (!code.includes(needle)) {
+    console.warn('patch-upstream: could not find discoverModels needle in discovery.ts')
+    return
+  }
+
+  code = code.replace(needle, replacement)
+  if (isCRLF) {
+    code = code.replace(/\n/g, '\r\n')
+  }
+
+  writeFileSync(discoveryPath, code, 'utf8')
+  console.log(`patch-upstream: successfully patched ${discoveryPath}`)
+
+  const staleLibDir = join(sourceDir, 'packages/llm/llm-pi-ai/lib')
+  if (existsSync(staleLibDir)) {
+    console.log(`patch-upstream: removing stale ${staleLibDir}`)
+    rmSync(staleLibDir, { recursive: true, force: true })
+  }
+}
+
+// 9. Patch ui-conversation ConversationRoot.tsx for observable workspace selection failure logging
+function patchUiConversationRoot(sourceDir) {
+  const rootPath = resolve(sourceDir, 'packages/client/ui-conversation/src/client/skeleton/ConversationRoot.tsx')
+  if (!existsSync(rootPath)) {
+    console.log(`patch-upstream: ConversationRoot file not found at ${rootPath}, skipping ui-conversation patch.`)
+    return
+  }
+
+  let code = readFileSync(rootPath, 'utf8')
+  const isCRLF = code.includes('\r\n')
+  code = code.replace(/\r\n/g, '\n')
+
+  if (code.includes('selectWorkspace failed:')) {
+    console.log('patch-upstream: ConversationRoot.tsx already patched, skipping.')
+    return
+  }
+
+  const needle = `        onPick: (workspaceId) => {
+          setPickerOpen(false)
+          setPendingWorkspaceId(workspaceId)
+          void selectWorkspace(workspaceId).catch(() => {
+            setPendingWorkspaceId(current => current === workspaceId ? undefined : current)
+          })
+        },`
+
+  const replacement = `        onPick: (workspaceId) => {
+          setPickerOpen(false)
+          setPendingWorkspaceId(workspaceId)
+          void selectWorkspace(workspaceId).catch((error) => {
+            console.error('[ui-conversation] selectWorkspace failed:', error)
+            setPendingWorkspaceId(current => current === workspaceId ? undefined : current)
+          })
+        },`
+
+  if (!code.includes(needle)) {
+    console.warn('patch-upstream: could not find onPick needle in ConversationRoot.tsx')
+    return
+  }
+
+  code = code.replace(needle, replacement)
+  if (isCRLF) {
+    code = code.replace(/\n/g, '\r\n')
+  }
+
+  writeFileSync(rootPath, code, 'utf8')
+  console.log(`patch-upstream: successfully patched ${rootPath}`)
+
+  const staleLibDir = join(sourceDir, 'packages/client/ui-conversation/lib')
+  if (existsSync(staleLibDir)) {
+    console.log(`patch-upstream: removing stale ${staleLibDir}`)
+    rmSync(staleLibDir, { recursive: true, force: true })
+  }
+}
+
 patchClientModules(sourceDir)
 patchAgentPresetsDiscovery(sourceDir)
+patchSessionControllerAgent(sourceDir)
+patchLlmDiscovery(sourceDir)
+patchUiConversationRoot(sourceDir)

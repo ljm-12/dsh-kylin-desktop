@@ -1,6 +1,7 @@
-import { createWriteStream, existsSync, mkdirSync, type WriteStream } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { createWriteStream, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync, type WriteStream } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { finished } from 'node:stream/promises'
 import { app, BrowserWindow, dialog, Menu } from 'electron'
 import { desktopCopy } from './locales.js'
@@ -80,6 +81,160 @@ function keepNavigationOnOrigin(window: BrowserWindow, allowed: URL): void {
   })
 }
 
+export const DEFAULT_SETTINGS_YAML = `agent-default-model:
+  provider: intranet-openai
+  model: DeepSeek-V4-Flash-0731-w4a8
+llm-pi-ai:
+  providers:
+    - id: intranet-openai
+      name: 局域网大模型
+      api: openai-completions
+      baseURL: http://192.168.0.40:3000/v1
+      apiKey: sk-no-key-required
+      models:
+        - id: DeepSeek-V4-Flash-0731-w4a8
+          name: DeepSeek-V4-Flash-0731-w4a8
+          contextWindow: 131072
+          maxTokens: 8192
+        - id: local-model
+          name: local-model
+          contextWindow: 131072
+          maxTokens: 8192
+`
+
+export function healSettingsYaml(rawYaml: string): string {
+  let healed = rawYaml
+
+  // 1. Fix protocol: change anthropic-messages to openai-completions
+  healed = healed.replace(/api:\s*anthropic-messages/g, 'api: openai-completions')
+
+  // 2. Fix baseURL if missing /v1 on port 3000
+  healed = healed.replace(/(baseURL:\s*http:\/\/[^/:\s]+:3000)(?!\/v1)(\/?)/g, '$1/v1')
+
+  // 3. Ensure local-model alias is present in models list if DeepSeek-V4-Flash-0731-w4a8 is present
+  if (healed.includes('DeepSeek-V4-Flash-0731-w4a8') && !healed.includes('id: local-model')) {
+    healed = healed.replace(
+      /(- id: DeepSeek-V4-Flash-0731-w4a8[\s\S]*?maxTokens:\s*\d+)/,
+      `$1\n        - id: local-model\n          name: local-model\n          contextWindow: 131072\n          maxTokens: 8192`,
+    )
+  }
+
+  // 4. Align default model with the active model
+  if (healed.includes('DeepSeek-V4-Flash-0731-w4a8')) {
+    healed = healed.replace(
+      /(agent-default-model:\s*\n\s*provider:\s*intranet-openai\s*\n\s*model:\s*)local-model/,
+      '$1DeepSeek-V4-Flash-0731-w4a8',
+    )
+  }
+
+  return healed
+}
+
+export function ensureInitialWorkspaceAndSettings(dshHome: string, workspace: string): void {
+  // 1. Ensure default workspace pre-seeding
+  const storagesDir = join(dshHome, 'storages')
+  mkdirSync(storagesDir, { recursive: true, mode: 0o700 })
+  const workspaceJsonPath = join(storagesDir, 'workspace.json')
+
+  let canonicalWorkspace = workspace
+  try {
+    canonicalWorkspace = realpathSync(workspace)
+  } catch {
+    // Keep original path if realpath fails
+  }
+
+  if (existsSync(workspaceJsonPath)) {
+    try {
+      const raw = readFileSync(workspaceJsonPath, 'utf8')
+      const data = JSON.parse(raw) as {
+        tables?: { workspaces?: Record<string, { path?: string; [key: string]: unknown }> }
+        global?: { initialized?: boolean; workspaceIds?: string[]; archivedSessionIds?: string[] }
+      }
+      const workspacesMap = data.tables?.workspaces
+      if (typeof workspacesMap === 'object' && workspacesMap !== null) {
+        const values = Object.values(workspacesMap)
+        const hasWorkspace = values.some(v => v?.path === canonicalWorkspace || v?.path === workspace)
+        if (!hasWorkspace && values.length === 0) {
+          const id = randomUUID()
+          const now = new Date().toISOString()
+          data.tables = data.tables ?? {}
+          data.tables.workspaces = {
+            [id]: {
+              path: canonicalWorkspace,
+              title: basename(canonicalWorkspace) || 'AgentWorkspace',
+              sessionIds: [],
+              createdAt: now,
+              updatedAt: now,
+            },
+          }
+          if (Array.isArray(data.global?.workspaceIds)) {
+            data.global.workspaceIds.push(id)
+          } else {
+            data.global = {
+              initialized: true,
+              workspaceIds: [id],
+              archivedSessionIds: [],
+            }
+          }
+          writeFileSync(workspaceJsonPath, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 })
+          console.log(`[deepseek-harness] Pre-seeded workspace in existing workspace.json: ${canonicalWorkspace}`)
+        }
+      }
+    } catch (error) {
+      console.warn('[deepseek-harness] Warning inspecting workspace.json:', error)
+    }
+  } else {
+    const id = randomUUID()
+    const now = new Date().toISOString()
+    const initialData = {
+      unit: {
+        name: 'workspace',
+        version: 2,
+      },
+      global: {
+        initialized: true,
+        workspaceIds: [id],
+        archivedSessionIds: [],
+      },
+      tables: {
+        workspaces: {
+          [id]: {
+            path: canonicalWorkspace,
+            title: basename(canonicalWorkspace) || 'AgentWorkspace',
+            sessionIds: [],
+            createdAt: now,
+            updatedAt: now,
+          },
+        },
+      },
+    }
+    writeFileSync(workspaceJsonPath, `${JSON.stringify(initialData, null, 2)}\n`, { mode: 0o600 })
+    console.log(`[deepseek-harness] Initialized workspace.json with default workspace: ${canonicalWorkspace}`)
+  }
+
+  // 2. Ensure settings.yaml self-healing
+  const settingsYamlPath = join(dshHome, 'settings.yaml')
+  if (existsSync(settingsYamlPath)) {
+    try {
+      const existing = readFileSync(settingsYamlPath, 'utf8')
+      const healed = healSettingsYaml(existing)
+      if (healed !== existing) {
+        writeFileSync(settingsYamlPath, healed, { mode: 0o600 })
+        console.log('[deepseek-harness] Healed existing settings.yaml (protocol/model/baseURL alignment)')
+      }
+    } catch (error) {
+      console.warn('[deepseek-harness] Warning healing settings.yaml:', error)
+    }
+  } else {
+    try {
+      writeFileSync(settingsYamlPath, DEFAULT_SETTINGS_YAML, { mode: 0o600 })
+      console.log('[deepseek-harness] Initialized default settings.yaml')
+    } catch (error) {
+      console.warn('[deepseek-harness] Warning creating default settings.yaml:', error)
+    }
+  }
+}
+
 async function stopRuntime(): Promise<void> {
   const owned = runtime
   runtime = undefined
@@ -108,6 +263,7 @@ async function boot(): Promise<void> {
   const workspace = join(homedir(), 'AgentWorkspace')
   mkdirSync(dshHome, { recursive: true, mode: 0o700 })
   mkdirSync(workspace, { recursive: true, mode: 0o700 })
+  ensureInitialWorkspaceAndSettings(dshHome, workspace)
   const logPath = join(userData, 'runtime.log')
   const log = createWriteStream(logPath, { flags: 'a', mode: 0o600 })
   runtimeLog = log
@@ -184,6 +340,11 @@ async function boot(): Promise<void> {
 
     mainWindow = window
     keepNavigationOnOrigin(window, url)
+    window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+      const levels = ['DEBUG', 'INFO', 'WARN', 'ERROR']
+      const lvl = levels[level] ?? 'LOG'
+      writeLog('stdout', `[renderer ${lvl}] (${sourceId}:${line}) ${message}`)
+    })
     window.once('ready-to-show', () => {
       console.log('[deepseek-harness] Browser window ready to show, revealing window')
       window.show()
