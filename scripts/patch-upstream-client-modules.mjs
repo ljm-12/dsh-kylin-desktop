@@ -673,9 +673,161 @@ function patchUiSidebar(sourceDir) {
   }
 }
 
+// 11. Patch ui-attachment ComposerAttachments.tsx for Linux desktop drag-and-drop (text/uri-list) support
+function patchUiAttachment(sourceDir) {
+  const filePath = resolve(sourceDir, 'packages/client/ui-attachment/src/client/ComposerAttachments.tsx')
+  if (!existsSync(filePath)) {
+    console.log(`patch-upstream: ComposerAttachments.tsx not found at ${filePath}, skipping ui-attachment patch.`)
+    return
+  }
+
+  let code = readFileSync(filePath, 'utf8')
+  const isCRLF = code.includes('\r\n')
+  code = code.replace(/\r\n/g, '\n')
+
+  if (code.includes("dataTransfer.types.includes('text/uri-list')")) {
+    console.log('patch-upstream: ComposerAttachments.tsx already patched, skipping.')
+    return
+  }
+
+  const needleTransfer = `    const fileTransfer = (event: globalThis.DragEvent): DataTransfer | null => {
+      const dataTransfer = event.dataTransfer
+      if (dataTransfer === null || !dataTransfer.types.includes('Files')) return null
+      return dataTransfer
+    }`
+
+  const replacementTransfer = `    const fileTransfer = (event: globalThis.DragEvent): DataTransfer | null => {
+      const dataTransfer = event.dataTransfer
+      if (dataTransfer === null || (!dataTransfer.types.includes('Files') && !dataTransfer.types.includes('text/uri-list'))) return null
+      return dataTransfer
+    }`
+
+  if (!code.includes(needleTransfer)) {
+    console.warn('patch-upstream: could not find fileTransfer needle in ComposerAttachments.tsx')
+    return
+  }
+
+  code = code.replace(needleTransfer, replacementTransfer)
+
+  const needleDrop = `    const onDrop = (event: globalThis.DragEvent): void => {
+      const dataTransfer = fileTransfer(event)
+      if (dataTransfer === null) return
+      event.preventDefault()
+      reset()
+      if (canAcceptDrop) onAddFiles([...dataTransfer.files])
+    }`
+
+  const replacementDrop = `    const onDrop = (event: globalThis.DragEvent): void => {
+      const dataTransfer = fileTransfer(event)
+      if (dataTransfer === null) return
+      event.preventDefault()
+      reset()
+      if (canAcceptDrop) {
+        if (dataTransfer.files && dataTransfer.files.length > 0) {
+          onAddFiles([...dataTransfer.files])
+        } else {
+          const uriList = dataTransfer.getData('text/uri-list')
+          const bridge = (window as any).__electronNativeBridge
+          if (uriList && typeof bridge?.readPaths === 'function') {
+            const rawUris = uriList.split(/\\r?\\n/).filter((l: string) => l.startsWith('file://'))
+            const paths = rawUris.map((u: string) => {
+              try { return decodeURIComponent(new URL(u).pathname) } catch { return u.replace(/^file:\\/\\//, '') }
+            })
+            if (paths.length > 0) {
+              bridge.readPaths(paths).then((items: any[]) => {
+                const files = items.map((it: any) => new File([new Blob([it.buffer], { type: it.type })], it.name, { type: it.type, lastModified: Date.now() }))
+                if (files.length > 0) onAddFiles(files)
+              }).catch(() => {})
+            }
+          }
+        }
+      }
+    }`
+
+  if (code.includes(needleDrop)) {
+    code = code.replace(needleDrop, replacementDrop)
+  }
+
+  if (isCRLF) {
+    code = code.replace(/\n/g, '\r\n')
+  }
+
+  writeFileSync(filePath, code, 'utf8')
+  console.log(`patch-upstream: successfully patched ${filePath}`)
+
+  const staleLibDir = join(sourceDir, 'packages/client/ui-attachment/lib')
+  if (existsSync(staleLibDir)) {
+    console.log(`patch-upstream: removing stale ${staleLibDir}`)
+    rmSync(staleLibDir, { recursive: true, force: true })
+  }
+}
+
+// 12. Patch ui-conversation InputBar.tsx for direct native file picker integration
+function patchUiConversationInputBar(sourceDir) {
+  const inputBarPath = resolve(sourceDir, 'packages/client/ui-conversation/src/client/skeleton/InputBar.tsx')
+  if (!existsSync(inputBarPath)) {
+    console.log(`patch-upstream: InputBar file not found at ${inputBarPath}, skipping InputBar patch.`)
+    return
+  }
+
+  let code = readFileSync(inputBarPath, 'utf8')
+  const isCRLF = code.includes('\r\n')
+  code = code.replace(/\r\n/g, '\n')
+
+  if (code.includes('bridge?.pickFiles')) {
+    console.log('patch-upstream: InputBar.tsx already patched, skipping.')
+    return
+  }
+
+  const needle = `                onMouseDown={keepFocus}
+                onClick={() => { fileInputRef.current?.click() }}
+              >
+                <IconPaperclipOutline16 size={14} />`
+
+  const replacement = `                onMouseDown={keepFocus}
+                onClick={() => {
+                  const bridge = (window as any).__electronNativeBridge
+                  if (typeof bridge?.pickFiles === 'function') {
+                    bridge.pickFiles(true).then((items: any[]) => {
+                      if (!items || items.length === 0) return
+                      const files = items.map((it: any) => new File([new Blob([it.buffer], { type: it.type })], it.name, { type: it.type, lastModified: Date.now() }))
+                      intakeFiles(files)
+                    }).catch(() => {
+                      fileInputRef.current?.click()
+                    })
+                  } else {
+                    fileInputRef.current?.click()
+                  }
+                }}
+              >
+                <IconPaperclipOutline16 size={14} />`
+
+  if (!code.includes(needle)) {
+    console.warn('patch-upstream: could not find attach button needle in InputBar.tsx')
+    return
+  }
+
+  code = code.replace(needle, replacement)
+
+  if (isCRLF) {
+    code = code.replace(/\n/g, '\r\n')
+  }
+
+  writeFileSync(inputBarPath, code, 'utf8')
+  console.log(`patch-upstream: successfully patched ${inputBarPath}`)
+
+  const staleLibDir = join(sourceDir, 'packages/client/ui-conversation/lib')
+  if (existsSync(staleLibDir)) {
+    console.log(`patch-upstream: removing stale ${staleLibDir}`)
+    rmSync(staleLibDir, { recursive: true, force: true })
+  }
+}
+
 patchClientModules(sourceDir)
 patchAgentPresetsDiscovery(sourceDir)
 patchSessionControllerAgent(sourceDir)
 patchLlmDiscovery(sourceDir)
 patchUiConversationRoot(sourceDir)
 patchUiSidebar(sourceDir)
+patchUiAttachment(sourceDir)
+patchUiConversationInputBar(sourceDir)

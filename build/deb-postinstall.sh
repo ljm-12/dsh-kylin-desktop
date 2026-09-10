@@ -1,6 +1,69 @@
 #!/usr/bin/env bash
 set -e
 
+# 0. Setup bash environment wrapper for Chinese IME and Kylin display compatibility
+APP_DIR="/opt/DeepSeek Harness Kylin"
+REAL_BIN="$APP_DIR/deepseek-harness-kylin.bin"
+WRAPPER="$APP_DIR/deepseek-harness-kylin"
+
+if [ -f "$WRAPPER" ] && [ ! -f "$REAL_BIN" ]; then
+  mv "$WRAPPER" "$REAL_BIN"
+fi
+
+cat << 'EOF' > "$WRAPPER"
+#!/usr/bin/env bash
+# DeepSeek Harness Kylin environment wrapper for Chinese IME and display stability
+
+# 1. Detect and configure Chinese input method before GTK3 C++ initialization
+if [ -z "$GTK_IM_MODULE" ]; then
+  if [ -n "$XMODIFIERS" ] && echo "$XMODIFIERS" | grep -q "ibus"; then
+    export GTK_IM_MODULE=ibus
+  elif [ -n "$XMODIFIERS" ] && echo "$XMODIFIERS" | grep -q "fcitx"; then
+    export GTK_IM_MODULE=fcitx
+  elif which fcitx5 >/dev/null 2>&1 || pgrep -x fcitx5 >/dev/null 2>&1; then
+    export GTK_IM_MODULE=fcitx5
+  elif which fcitx >/dev/null 2>&1 || pgrep -x fcitx >/dev/null 2>&1; then
+    export GTK_IM_MODULE=fcitx
+  elif which ibus-daemon >/dev/null 2>&1 || pgrep -x ibus-daemon >/dev/null 2>&1; then
+    export GTK_IM_MODULE=ibus
+  else
+    export GTK_IM_MODULE=fcitx
+  fi
+fi
+
+if [ -z "$QT_IM_MODULE" ]; then
+  export QT_IM_MODULE="$GTK_IM_MODULE"
+fi
+
+if [ -z "$XMODIFIERS" ]; then
+  export XMODIFIERS="@im=$GTK_IM_MODULE"
+fi
+
+if [ -z "$SDL_IM_MODULE" ]; then
+  export SDL_IM_MODULE="$GTK_IM_MODULE"
+fi
+
+# 2. Prevent XDG portal hanging on UKUI desktop
+export GTK_USE_PORTAL=0
+
+# 3. Configure display backend flags
+EXTRA_ARGS=()
+if [ -n "$WAYLAND_DISPLAY" ] && [ -z "$DISPLAY" ]; then
+  EXTRA_ARGS+=("--ozone-platform-hint=auto" "--enable-wayland-ime")
+else
+  export GDK_BACKEND=x11
+  EXTRA_ARGS+=("--ozone-platform=x11")
+fi
+
+DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+exec "$DIR/deepseek-harness-kylin.bin" "${EXTRA_ARGS[@]}" "$@"
+EOF
+
+chmod 755 "$WRAPPER"
+if [ -f "$REAL_BIN" ]; then
+  chmod 755 "$REAL_BIN"
+fi
+
 # 1. Standard Electron installation hooks
 if type update-alternatives >/dev/null 2>&1; then
   if [ -L '/usr/bin/deepseek-harness-kylin' -a -e '/usr/bin/deepseek-harness-kylin' -a "$(readlink '/usr/bin/deepseek-harness-kylin')" != '/etc/alternatives/deepseek-harness-kylin' ]; then
@@ -54,6 +117,7 @@ if command -v kysec_set >/dev/null 2>&1; then
   echo "[deb-postinstall] Registering binaries with Kylin KySec security subsystem..."
   for target_bin in \
     "/opt/DeepSeek Harness Kylin/deepseek-harness-kylin" \
+    "/opt/DeepSeek Harness Kylin/deepseek-harness-kylin.bin" \
     "/opt/DeepSeek Harness Kylin/chrome-sandbox" \
     "/opt/DeepSeek Harness Kylin/resources/runtime/deepseek-harness-sdk-runtime-linux-arm64" \
     "${RUNTIME_TARGET}-rg"; do

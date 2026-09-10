@@ -371,5 +371,72 @@ export async function discoverModels(request: ModelDiscoveryRequest): Promise<Di
     expect(patched).toContain('margin-bottom: 4px;')
     expect(existsSync(join(sidebarLibDir, 'stale.js'))).toBe(false)
   })
+
+  it('correctly applies Linux drag-and-drop patch to ComposerAttachments.tsx', () => {
+    const attachmentDir = join(tempDir, 'packages/client/ui-attachment/src/client')
+    const attachmentLibDir = join(tempDir, 'packages/client/ui-attachment/lib')
+    mkdirSync(attachmentDir, { recursive: true })
+    mkdirSync(attachmentLibDir, { recursive: true })
+    writeFileSync(join(attachmentLibDir, 'stale.js'), '// stale')
+
+    const sampleComposerAttachmentsTsx = `
+    const fileTransfer = (event: globalThis.DragEvent): DataTransfer | null => {
+      const dataTransfer = event.dataTransfer
+      if (dataTransfer === null || !dataTransfer.types.includes('Files')) return null
+      return dataTransfer
+    }
+    const onDrop = (event: globalThis.DragEvent): void => {
+      const dataTransfer = fileTransfer(event)
+      if (dataTransfer === null) return
+      event.preventDefault()
+      reset()
+      if (canAcceptDrop) onAddFiles([...dataTransfer.files])
+    }
+`
+    const attachmentFile = join(attachmentDir, 'ComposerAttachments.tsx')
+    writeFileSync(attachmentFile, sampleComposerAttachmentsTsx, 'utf8')
+
+    const stdout = execFileSync(process.execPath, [patchScript, tempDir], { encoding: 'utf8' })
+    expect(stdout).toContain('successfully patched')
+
+    const patched = readFileSync(attachmentFile, 'utf8')
+    expect(patched).toContain("dataTransfer.types.includes('text/uri-list')")
+    expect(patched).toContain('bridge.readPaths(paths)')
+    expect(existsSync(join(attachmentLibDir, 'stale.js'))).toBe(false)
+  })
+
+  it('correctly applies native picker integration to InputBar.tsx', () => {
+    const inputBarDir = join(tempDir, 'packages/client/ui-conversation/src/client/skeleton')
+    const inputBarLibDir = join(tempDir, 'packages/client/ui-conversation/lib')
+    mkdirSync(inputBarDir, { recursive: true })
+    mkdirSync(inputBarLibDir, { recursive: true })
+    writeFileSync(join(inputBarLibDir, 'stale.js'), '// stale')
+
+    const sampleInputBarTsx = `
+            <Tooltip label={t('file.attach')} side="top" delayMs={500}>
+              <button
+                type="button"
+                className={css.add}
+                aria-label={t('file.attach')}
+                disabled={subagent !== null || locked || machineBusy || addFiles === undefined}
+                onMouseDown={keepFocus}
+                onClick={() => { fileInputRef.current?.click() }}
+              >
+                <IconPaperclipOutline16 size={14} />
+              </button>
+            </Tooltip>
+`
+    const inputBarFile = join(inputBarDir, 'InputBar.tsx')
+    writeFileSync(inputBarFile, sampleInputBarTsx, 'utf8')
+
+    const stdout = execFileSync(process.execPath, [patchScript, tempDir], { encoding: 'utf8' })
+    expect(stdout).toContain('successfully patched')
+
+    const patched = readFileSync(inputBarFile, 'utf8')
+    expect(patched).toContain('bridge?.pickFiles')
+    expect(patched).toContain('intakeFiles(files)')
+    expect(existsSync(join(inputBarLibDir, 'stale.js'))).toBe(false)
+  })
 })
+
 

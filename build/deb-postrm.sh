@@ -23,6 +23,7 @@ case "$action" in
     if command -v kysec_set >/dev/null 2>&1; then
       for target_bin in \
         "/opt/DeepSeek Harness Kylin/deepseek-harness-kylin" \
+        "/opt/DeepSeek Harness Kylin/deepseek-harness-kylin.bin" \
         "/opt/DeepSeek Harness Kylin/chrome-sandbox" \
         "/opt/DeepSeek Harness Kylin/resources/runtime/deepseek-harness-sdk-runtime-linux-arm64" \
         "/opt/DeepSeek Harness Kylin/resources/runtime/ripgrep"; do
