@@ -32,19 +32,19 @@
 - **工作流文件**：`.github/workflows/build-kylin-arm64-desktop.yml`
 - **运行环境**：原生 `ubuntu-24.04-arm` runner。
 - **构建机制**：
-  - 接收参数 `dsh_ref`（如 `dsh-v0.1.3-alpha.2`），拉取官方 `deepseek-ai/deepseek-harness` 对应的 Release Tag；
-  - 在官方 `ubuntu-24.04-arm` 原生 ARM64 虚拟环境上运行；
-  - 自动编译 `node-pty`（使用 `manylinux_2_28_aarch64` 容器编译并校验 `GLIBC <= 2.28`）；
-  - 调用 `build-exe-for-python-sdk.ts` 制作 Node 24 单文件可执行体 `deepseek-harness-sdk-runtime-linux-arm64`；
-  - 打包离线 Office/Browser Python 运行时环境；
-  - 执行 `smoke-runtime` 验证后端 HTTP 服务和离线资源无外网访问正常启动；
-  - 使用 `electron-builder` 生成标准的 `.deb` 安装包制品；
-  - 执行 `verify-linux-artifacts.sh`，严密校验二进制 ELF 架构（必须为 ARM aarch64）、无损坏 ELF、deb 包依赖声明及文件完整性；
-  - 上传制品归档供直接下载。
+  - 接收参数 `dsh_ref`（如 `dsh-v0.1.5-alpha.2`），拉取官方 `deepseek-ai/deepseek-harness` 对应的 Release Tag；
+  - 在官方仓库中执行 `corepack pnpm install --frozen-lockfile` 安装官方依赖；
+  - 定位 `packages/subprocess/subprocess-local/node_modules/node-pty`；
+  - 启动预置的 `manylinux_2_28_aarch64` 容器在 ARM64 环境下编译 `pty.node` 原生 C++ 扩展（校验 GLIBC ≤ 2.28）；
+  - 执行 `build-exe-for-python-sdk.ts` 构建独立的 ARM64 可执行运行时 (`deepseek-harness-sdk-runtime-linux-arm64`) 与 `ripgrep`；
+  - 将 ARM64 运行时与内置的离线 Office/浏览器工具链 (`office/downloads` 中的 CPython 3.10 与预下载 wheels) 组装至 `staging/`；
+  - 运行 `smoke-runtime` 进行本地回环与 combo bundle HTTP 验证；
+  - 使用 `electron-builder` 打包生成标准 `.deb` 安装包，并调用 `verify-linux-artifacts.sh` 进行静态架构、GLIBC 门禁与目录结构校验；
+  - 生成 `SHA256SUMS` 和 `BUILD-INFO.json`，并将全部制品上传到 GitHub Actions Artifacts。
 
 ---
 
-## 运维与交付约束
+## 3. 运维与交付约束
 
 1. **敏感环境变量清洗**：
    - Electron 桌面主进程在拉起底层 Runtime 时，会主动过滤清洗父进程的环境变量（包含 `*_API_KEY` 与 `*_SECRET`）。
@@ -55,10 +55,10 @@
 
 ---
 
-## 打包步骤记录
+## 4. 打包步骤记录
 
 1. **版本排查**：
-   检查官方仓库 `deepseek-ai/deepseek-harness` 最新发布的 `dsh-v*` 标签版本（例如 `dsh-v0.1.3-alpha.2`）。
+   检查官方仓库 `deepseek-ai/deepseek-harness` 最新发布的 `dsh-v*` 标签版本（例如 `dsh-v0.1.5-alpha.2`）。
 2. **触发构建**：
    通过 GitHub API 或 Actions 控制台触发 `Build Kylin ARM64 desktop` 工作流，传入选定的 `dsh_ref`。
 3. **验收校验与归档**：
