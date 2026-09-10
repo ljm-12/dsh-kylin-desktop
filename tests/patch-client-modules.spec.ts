@@ -392,6 +392,18 @@ export async function discoverModels(request: ModelDiscoveryRequest): Promise<Di
       reset()
       if (canAcceptDrop) onAddFiles([...dataTransfer.files])
     }
+    document.addEventListener('dragenter', onDragEnter)
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('dragleave', onDragLeave)
+    document.addEventListener('drop', onDrop)
+    window.addEventListener('dragend', reset)
+    return () => {
+      document.removeEventListener('dragenter', onDragEnter)
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('dragleave', onDragLeave)
+      document.removeEventListener('drop', onDrop)
+      window.removeEventListener('dragend', reset)
+    }
 `
     const attachmentFile = join(attachmentDir, 'ComposerAttachments.tsx')
     writeFileSync(attachmentFile, sampleComposerAttachmentsTsx, 'utf8')
@@ -401,7 +413,10 @@ export async function discoverModels(request: ModelDiscoveryRequest): Promise<Di
 
     const patched = readFileSync(attachmentFile, 'utf8')
     expect(patched).toContain("dataTransfer.types.includes('text/uri-list')")
-    expect(patched).toContain('bridge.readPaths(paths)')
+    expect(patched).toContain('event.preventDefault()\n      reset()')
+    expect(patched).toContain("window.addEventListener('keydown', onKeyDown)")
+    expect(patched).toContain("window.addEventListener('click', reset)")
+    expect(patched).not.toContain('bridge')
     expect(existsSync(join(attachmentLibDir, 'stale.js'))).toBe(false)
   })
 
@@ -413,18 +428,14 @@ export async function discoverModels(request: ModelDiscoveryRequest): Promise<Di
     writeFileSync(join(inputBarLibDir, 'stale.js'), '// stale')
 
     const sampleInputBarTsx = `
-            <Tooltip label={t('file.attach')} side="top" delayMs={500}>
-              <button
-                type="button"
-                className={css.add}
-                aria-label={t('file.attach')}
-                disabled={subagent !== null || locked || machineBusy || addFiles === undefined}
-                onMouseDown={keepFocus}
-                onClick={() => { fileInputRef.current?.click() }}
-              >
-                <IconPaperclipOutline16 size={14} />
-              </button>
-            </Tooltip>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              disabled={subagent !== null}
+              hidden
+              onChange={onPickFiles}
+            />
 `
     const inputBarFile = join(inputBarDir, 'InputBar.tsx')
     writeFileSync(inputBarFile, sampleInputBarTsx, 'utf8')
@@ -433,8 +444,9 @@ export async function discoverModels(request: ModelDiscoveryRequest): Promise<Di
     expect(stdout).toContain('successfully patched')
 
     const patched = readFileSync(inputBarFile, 'utf8')
-    expect(patched).toContain('bridge?.pickFiles')
-    expect(patched).toContain('intakeFiles(files)')
+    expect(patched).toContain("style={{ position: 'fixed', top: -9999")
+    expect(patched).not.toMatch(/^\s*hidden\s*$/m)
+    expect(patched).not.toContain('bridge')
     expect(existsSync(join(inputBarLibDir, 'stale.js'))).toBe(false)
   })
 })

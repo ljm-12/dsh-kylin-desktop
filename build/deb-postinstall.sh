@@ -47,7 +47,7 @@ fi
 export GTK_USE_PORTAL=0
 
 # 3. Configure display backend flags
-EXTRA_ARGS=()
+EXTRA_ARGS=("--no-sandbox" "--disable-features=UseXdgDesktopPortal")
 if [ -n "$WAYLAND_DISPLAY" ] && [ -z "$DISPLAY" ]; then
   EXTRA_ARGS+=("--ozone-platform-hint=auto" "--enable-wayland-ime")
 else

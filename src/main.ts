@@ -1,12 +1,10 @@
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { createWriteStream, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync, type WriteStream } from 'node:fs'
-import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, extname, join } from 'node:path'
+import { basename, join } from 'node:path'
 import { finished } from 'node:stream/promises'
-import { fileURLToPath } from 'node:url'
-import { app, BrowserWindow, dialog, ipcMain, Menu } from 'electron'
+import { app, BrowserWindow, dialog, Menu } from 'electron'
 import { desktopCopy } from './locales.js'
 import { createRuntimeEnvironment, RuntimeProcess, type RuntimeExit } from './runtime-process.js'
 import { resolveRuntimeFiles, verifyExecutable } from './runtime-files.js'
@@ -73,6 +71,9 @@ export function configureLinuxPlatformCompatibility(
   if (!commandLine.hasSwitch('disable-features')) {
     commandLine.appendSwitch('disable-features', 'UseXdgDesktopPortal')
   }
+  if (env.GTK_USE_PORTAL === undefined) {
+    env.GTK_USE_PORTAL = '0'
+  }
   if (!isWayland) {
     if (!env.GTK_IM_MODULE) {
       if (env.XMODIFIERS?.includes('ibus')) {
@@ -109,97 +110,7 @@ export function configureLinuxPlatformCompatibility(
   }
 }
 
-export function getMimeType(filePath: string): string {
-  const ext = extname(filePath).toLowerCase()
-  switch (ext) {
-    case '.png': return 'image/png'
-    case '.jpg':
-    case '.jpeg': return 'image/jpeg'
-    case '.gif': return 'image/gif'
-    case '.webp': return 'image/webp'
-    case '.svg': return 'image/svg+xml'
-    case '.bmp': return 'image/bmp'
-    case '.ico': return 'image/x-icon'
-    case '.pdf': return 'application/pdf'
-    case '.txt': return 'text/plain'
-    case '.md': return 'text/markdown'
-    case '.json': return 'application/json'
-    case '.csv': return 'text/csv'
-    case '.zip': return 'application/zip'
-    case '.tar': return 'application/x-tar'
-    case '.gz': return 'application/gzip'
-    case '.doc': return 'application/msword'
-    case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    case '.xls': return 'application/vnd.ms-excel'
-    case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    case '.ppt': return 'application/vnd.ms-powerpoint'
-    case '.pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-    default: return 'application/octet-stream'
-  }
-}
 
-export interface NativeFilePayload {
-  name: string
-  size: number
-  type: string
-  buffer: Buffer
-}
-
-export function registerFileIpcHandlers(
-  ipcTarget: {
-    handle: (channel: string, listener: (event: unknown, ...args: any[]) => any) => void
-  } = ipcMain,
-  dialogTarget: {
-    showOpenDialog: (window: BrowserWindow, options: any) => Promise<{ canceled: boolean; filePaths: string[] }>
-  } = dialog,
-  getWindow: () => BrowserWindow | undefined = () => mainWindow,
-): void {
-  ipcTarget.handle('dsh:pick-files', async (_event, options?: { multiple?: boolean; accept?: string }) => {
-    const win = getWindow()
-    if (!win || win.isDestroyed()) return []
-    const result = await dialogTarget.showOpenDialog(win, {
-      title: '选择文件',
-      properties: options?.multiple ? ['openFile', 'multiSelections'] : ['openFile'],
-    })
-    if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
-      return []
-    }
-    const files: NativeFilePayload[] = []
-    for (const filePath of result.filePaths) {
-      try {
-        const buf = await readFile(filePath)
-        files.push({
-          name: basename(filePath),
-          size: buf.byteLength,
-          type: getMimeType(filePath),
-          buffer: buf,
-        })
-      } catch (err) {
-        console.warn('[deepseek-harness] Failed to read selected file:', filePath, err)
-      }
-    }
-    return files
-  })
-
-  ipcTarget.handle('dsh:read-paths', async (_event, { paths }: { paths: string[] }) => {
-    const files: NativeFilePayload[] = []
-    if (!Array.isArray(paths)) return []
-    for (const filePath of paths) {
-      try {
-        const buf = await readFile(filePath)
-        files.push({
-          name: basename(filePath),
-          size: buf.byteLength,
-          type: getMimeType(filePath),
-          buffer: buf,
-        })
-      } catch (err) {
-        console.warn('[deepseek-harness] Failed to read path:', filePath, err)
-      }
-    }
-    return files
-  })
-}
 
 export function checkLinuxImeRestart(
   platform: string = process.platform,
@@ -508,7 +419,6 @@ async function boot(): Promise<void> {
     console.log(`[deepseek-harness] Runtime ready at: ${url.origin}`)
     Menu.setApplicationMenu(null)
     console.log('[deepseek-harness] Creating main browser window...')
-    const preloadPath = fileURLToPath(new URL('preload.cjs', import.meta.url))
     const window = new BrowserWindow({
       title: copy.appTitle,
       width: 1400,
@@ -519,7 +429,6 @@ async function boot(): Promise<void> {
       autoHideMenuBar: true,
       backgroundColor: '#101114',
       webPreferences: {
-        preload: preloadPath,
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: false,
@@ -533,15 +442,6 @@ async function boot(): Promise<void> {
       const levels = ['DEBUG', 'INFO', 'WARN', 'ERROR']
       const lvl = levels[level] ?? 'LOG'
       writeLog('stdout', `[renderer ${lvl}] (${sourceId}:${line}) ${message}`)
-    })
-
-    window.webContents.on('before-input-event', (event, input) => {
-      if (input.type === 'keyDown') {
-        if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
-          window.webContents.toggleDevTools()
-          event.preventDefault()
-        }
-      }
     })
 
     const injectCleanUiCss = (): void => {
@@ -584,7 +484,6 @@ async function boot(): Promise<void> {
 
 if (!checkLinuxImeRestart() && typeof app?.requestSingleInstanceLock === 'function') {
   configureLinuxPlatformCompatibility(process.platform, process.env, app.commandLine, app)
-  registerFileIpcHandlers()
 
   let hasLock = app.requestSingleInstanceLock()
   if (!hasLock && typeof app.getPath === 'function') {

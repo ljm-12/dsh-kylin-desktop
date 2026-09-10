@@ -673,7 +673,7 @@ function patchUiSidebar(sourceDir) {
   }
 }
 
-// 11. Patch ui-attachment ComposerAttachments.tsx for Linux desktop drag-and-drop (text/uri-list) support
+// 11. Patch ui-attachment ComposerAttachments.tsx for Linux desktop drag-and-drop and unfreezable drop overlay
 function patchUiAttachment(sourceDir) {
   const filePath = resolve(sourceDir, 'packages/client/ui-attachment/src/client/ComposerAttachments.tsx')
   if (!existsSync(filePath)) {
@@ -685,7 +685,7 @@ function patchUiAttachment(sourceDir) {
   const isCRLF = code.includes('\r\n')
   code = code.replace(/\r\n/g, '\n')
 
-  if (code.includes("dataTransfer.types.includes('text/uri-list')")) {
+  if (code.includes("window.addEventListener('keydown', onKeyDown)") && code.includes('event.preventDefault()\n      reset()')) {
     console.log('patch-upstream: ComposerAttachments.tsx already patched, skipping.')
     return
   }
@@ -715,33 +715,49 @@ function patchUiAttachment(sourceDir) {
       event.preventDefault()
       reset()
       if (canAcceptDrop) onAddFiles([...dataTransfer.files])
+    }
+    document.addEventListener('dragenter', onDragEnter)
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('dragleave', onDragLeave)
+    document.addEventListener('drop', onDrop)
+    window.addEventListener('dragend', reset)
+    return () => {
+      document.removeEventListener('dragenter', onDragEnter)
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('dragleave', onDragLeave)
+      document.removeEventListener('drop', onDrop)
+      window.removeEventListener('dragend', reset)
     }`
 
   const replacementDrop = `    const onDrop = (event: globalThis.DragEvent): void => {
-      const dataTransfer = fileTransfer(event)
-      if (dataTransfer === null) return
       event.preventDefault()
       reset()
-      if (canAcceptDrop) {
-        if (dataTransfer.files && dataTransfer.files.length > 0) {
-          onAddFiles([...dataTransfer.files])
-        } else {
-          const uriList = dataTransfer.getData('text/uri-list')
-          const bridge = (window as any).__electronNativeBridge
-          if (uriList && typeof bridge?.readPaths === 'function') {
-            const rawUris = uriList.split(/\\r?\\n/).filter((l: string) => l.startsWith('file://'))
-            const paths = rawUris.map((u: string) => {
-              try { return decodeURIComponent(new URL(u).pathname) } catch { return u.replace(/^file:\\/\\//, '') }
-            })
-            if (paths.length > 0) {
-              bridge.readPaths(paths).then((items: any[]) => {
-                const files = items.map((it: any) => new File([new Blob([it.buffer], { type: it.type })], it.name, { type: it.type, lastModified: Date.now() }))
-                if (files.length > 0) onAddFiles(files)
-              }).catch(() => {})
-            }
-          }
-        }
+      const dataTransfer = fileTransfer(event)
+      if (dataTransfer === null) return
+      if (canAcceptDrop && dataTransfer.files && dataTransfer.files.length > 0) {
+        onAddFiles([...dataTransfer.files])
       }
+    }
+    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
+      if (event.key === 'Escape') reset()
+    }
+    document.addEventListener('dragenter', onDragEnter)
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('dragleave', onDragLeave)
+    document.addEventListener('drop', onDrop)
+    window.addEventListener('dragend', reset)
+    window.addEventListener('drop', reset)
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('click', reset)
+    return () => {
+      document.removeEventListener('dragenter', onDragEnter)
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('dragleave', onDragLeave)
+      document.removeEventListener('drop', onDrop)
+      window.removeEventListener('dragend', reset)
+      window.removeEventListener('drop', reset)
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('click', reset)
     }`
 
   if (code.includes(needleDrop)) {
@@ -774,36 +790,33 @@ function patchUiConversationInputBar(sourceDir) {
   const isCRLF = code.includes('\r\n')
   code = code.replace(/\r\n/g, '\n')
 
-  if (code.includes('bridge?.pickFiles')) {
+  if (code.includes("style={{ position: 'fixed', top: -9999")) {
     console.log('patch-upstream: InputBar.tsx already patched, skipping.')
     return
   }
 
-  const needle = `                onMouseDown={keepFocus}
-                onClick={() => { fileInputRef.current?.click() }}
-              >
-                <IconPaperclipOutline16 size={14} />`
+  const needle = `            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              disabled={subagent !== null}
+              hidden
+              onChange={onPickFiles}
+            />`
 
-  const replacement = `                onMouseDown={keepFocus}
-                onClick={() => {
-                  const bridge = (window as any).__electronNativeBridge
-                  if (typeof bridge?.pickFiles === 'function') {
-                    bridge.pickFiles(true).then((items: any[]) => {
-                      if (!items || items.length === 0) return
-                      const files = items.map((it: any) => new File([new Blob([it.buffer], { type: it.type })], it.name, { type: it.type, lastModified: Date.now() }))
-                      intakeFiles(files)
-                    }).catch(() => {
-                      fileInputRef.current?.click()
-                    })
-                  } else {
-                    fileInputRef.current?.click()
-                  }
-                }}
-              >
-                <IconPaperclipOutline16 size={14} />`
+  const replacement = `            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              disabled={subagent !== null}
+              style={{ position: 'fixed', top: -9999, left: -9999, opacity: 0, width: 1, height: 1, pointerEvents: 'none' }}
+              aria-hidden="true"
+              tabIndex={-1}
+              onChange={onPickFiles}
+            />`
 
   if (!code.includes(needle)) {
-    console.warn('patch-upstream: could not find attach button needle in InputBar.tsx')
+    console.warn('patch-upstream: could not find file input needle in InputBar.tsx')
     return
   }
 

@@ -2,8 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   checkLinuxImeRestart,
   configureLinuxPlatformCompatibility,
-  getMimeType,
-  registerFileIpcHandlers,
   type CommandLineSwitchTarget,
 } from '../src/main.ts'
 
@@ -28,6 +26,7 @@ describe('configureLinuxPlatformCompatibility', () => {
       { name: 'disable-accelerated-video-decode', value: undefined },
     ])
     expect(env.GDK_BACKEND).toBe('x11')
+    expect(env.GTK_USE_PORTAL).toBe('0')
     expect(env.GTK_IM_MODULE).toBe('fcitx')
     expect(env.QT_IM_MODULE).toBe('fcitx')
     expect(env.XMODIFIERS).toBe('@im=fcitx')
@@ -161,48 +160,6 @@ describe('checkLinuxImeRestart', () => {
     expect(checkLinuxImeRestart('win32', env, 'app.exe', [], mockSpawner as any)).toBe(false)
     expect(checkLinuxImeRestart('darwin', env, 'app', [], mockSpawner as any)).toBe(false)
     expect(mockSpawner).not.toHaveBeenCalled()
-  })
-})
-
-describe('getMimeType', () => {
-  it('maps common extensions to expected MIME types', () => {
-    expect(getMimeType('photo.png')).toBe('image/png')
-    expect(getMimeType('image.JPG')).toBe('image/jpeg')
-    expect(getMimeType('doc.pdf')).toBe('application/pdf')
-    expect(getMimeType('data.json')).toBe('application/json')
-    expect(getMimeType('unknown.xyz')).toBe('application/octet-stream')
-  })
-})
-
-describe('registerFileIpcHandlers', () => {
-  it('registers dsh:pick-files and dsh:read-paths handlers', async () => {
-    const handlers = new Map<string, Function>()
-    const ipcTarget = {
-      handle: (channel: string, listener: Function) => {
-        handlers.set(channel, listener)
-      },
-    }
-    const mockDialog = {
-      showOpenDialog: vi.fn().mockResolvedValue({ canceled: true, filePaths: [] }),
-    }
-    const mockWindow = { isDestroyed: () => false } as any
-
-    registerFileIpcHandlers(ipcTarget, mockDialog as any, () => mockWindow)
-
-    expect(handlers.has('dsh:pick-files')).toBe(true)
-    expect(handlers.has('dsh:read-paths')).toBe(true)
-
-    const pickHandler = handlers.get('dsh:pick-files')!
-    const pickResult = await pickHandler({}, { multiple: true })
-    expect(pickResult).toEqual([])
-    expect(mockDialog.showOpenDialog).toHaveBeenCalledWith(mockWindow, {
-      title: '选择文件',
-      properties: ['openFile', 'multiSelections'],
-    })
-
-    const readHandler = handlers.get('dsh:read-paths')!
-    const readResult = await readHandler({}, { paths: [] })
-    expect(readResult).toEqual([])
   })
 })
 
