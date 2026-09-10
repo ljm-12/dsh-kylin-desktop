@@ -16,12 +16,30 @@ describe('configureLinuxPlatformCompatibility', () => {
     expect(switches).toEqual([
       { name: 'ozone-platform', value: 'x11' },
       { name: 'no-sandbox', value: undefined },
+      { name: 'disable-features', value: 'UseXdgDesktopPortal' },
       { name: 'disable-gpu', value: undefined },
       { name: 'disable-dev-shm-usage', value: undefined },
       { name: 'disable-accelerated-video-decode', value: undefined },
     ])
     expect(env.GDK_BACKEND).toBe('x11')
+    expect(env.GTK_IM_MODULE).toBe('fcitx')
+    expect(env.QT_IM_MODULE).toBe('fcitx')
+    expect(env.XMODIFIERS).toBe('@im=fcitx')
+    expect(env.SDL_IM_MODULE).toBe('fcitx')
     expect(disableHardwareAcceleration).toHaveBeenCalledOnce()
+  })
+
+  it('respects ibus when XMODIFIERS specifies ibus', () => {
+    const switches: Array<{ name: string; value?: string }> = []
+    const commandLine: CommandLineSwitchTarget = {
+      appendSwitch: (name, value) => { switches.push({ name, value }) },
+      hasSwitch: name => switches.some(s => s.name === name),
+    }
+    const env: NodeJS.ProcessEnv = { XMODIFIERS: '@im=ibus' }
+    configureLinuxPlatformCompatibility('linux', env, commandLine)
+    expect(env.GTK_IM_MODULE).toBe('ibus')
+    expect(env.QT_IM_MODULE).toBe('ibus')
+    expect(env.XMODIFIERS).toBe('@im=ibus')
   })
 
   it('allows opting in to GPU when DSH_ENABLE_GPU is 1', () => {
@@ -38,6 +56,7 @@ describe('configureLinuxPlatformCompatibility', () => {
     expect(switches).toEqual([
       { name: 'ozone-platform', value: 'x11' },
       { name: 'no-sandbox', value: undefined },
+      { name: 'disable-features', value: 'UseXdgDesktopPortal' },
     ])
     expect(disableHardwareAcceleration).not.toHaveBeenCalled()
   })

@@ -57,6 +57,27 @@ export function configureLinuxPlatformCompatibility(
   if (!commandLine.hasSwitch('no-sandbox')) {
     commandLine.appendSwitch('no-sandbox')
   }
+  if (!commandLine.hasSwitch('disable-features')) {
+    commandLine.appendSwitch('disable-features', 'UseXdgDesktopPortal')
+  }
+  if (!env.GTK_IM_MODULE) {
+    if (env.XMODIFIERS?.includes('ibus')) {
+      env.GTK_IM_MODULE = 'ibus'
+    } else if (env.XMODIFIERS?.includes('fcitx5')) {
+      env.GTK_IM_MODULE = 'fcitx5'
+    } else {
+      env.GTK_IM_MODULE = 'fcitx'
+    }
+  }
+  if (!env.QT_IM_MODULE) {
+    env.QT_IM_MODULE = env.GTK_IM_MODULE
+  }
+  if (!env.XMODIFIERS) {
+    env.XMODIFIERS = `@im=${env.GTK_IM_MODULE}`
+  }
+  if (!env.SDL_IM_MODULE) {
+    env.SDL_IM_MODULE = env.GTK_IM_MODULE
+  }
   if (env.DSH_ENABLE_GPU !== '1') {
     if (typeof appTarget?.disableHardwareAcceleration === 'function') {
       appTarget.disableHardwareAcceleration()
