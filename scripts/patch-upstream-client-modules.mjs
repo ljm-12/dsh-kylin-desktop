@@ -496,7 +496,8 @@ function patchLlmDiscovery(sourceDir) {
         if (request.signal?.aborted) {
           throw new LlmError('model discovery aborted by caller', 'ABORTED', { cause: error })
         }
-        throw new LlmError(\`could not reach \${url}\`, 'DISCOVERY_FAILED', { cause: error })
+        const reason = error instanceof Error ? \`: \${error.message}\` : ''
+        throw new LlmError(\`could not reach \${url}\${reason}\`, 'DISCOVERY_FAILED', { cause: error })
       }
       if (!response.ok) {
         throw new LlmError(

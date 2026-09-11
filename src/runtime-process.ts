@@ -61,8 +61,9 @@ export function createRuntimeEnvironment(parent: NodeJS.ProcessEnv, dshHome: str
   }
   env.DSH_HOME = dshHome
   env.DSH_TELEMETRY_DISABLED = '1'
+  const defaultNoProxy = ['127.0.0.1', 'localhost', '192.168.0.0/16', '10.0.0.0/8', '172.16.0.0/12', '*.local']
   const existingNoProxy = env.NO_PROXY ?? env.no_proxy ?? ''
-  env.NO_PROXY = [...new Set(['127.0.0.1', 'localhost', ...existingNoProxy.split(',').map(value => value.trim()).filter(Boolean)])].join(',')
+  env.NO_PROXY = [...new Set([...defaultNoProxy, ...existingNoProxy.split(',').map(value => value.trim()).filter(Boolean)])].join(',')
   delete env.no_proxy
   return env
 }

@@ -13,7 +13,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: build-kylin-arm64-desktop-${{ inputs.dsh_ref || github.ref_name }}
@@ -104,3 +104,16 @@ jobs:
             packaging-source/dist/BUILD-INFO.json
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packaging-source/dist/*.deb
+            packaging-source/dist/SHA256SUMS
+            packaging-source/dist/BUILD-INFO.json
+          name: ${{ github.ref_name }} (Official ${{ steps.source.outputs.version }} ARM64 Release)
+          draft: false
+          prerelease: false
+

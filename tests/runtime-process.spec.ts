@@ -113,7 +113,7 @@ describe('Runtime environment', () => {
       XAUTHORITY: '/run/user/auth',
       DSH_HOME: '/config/dsh',
       DSH_TELEMETRY_DISABLED: '1',
-      NO_PROXY: '127.0.0.1,localhost,model.intra',
+      NO_PROXY: '127.0.0.1,localhost,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,*.local,model.intra',
       INTRANET_OPENAI_API_KEY: 'test-intranet-key',
       INTRANET_AGENT_API_KEY: 'test-agent-key',
     })
