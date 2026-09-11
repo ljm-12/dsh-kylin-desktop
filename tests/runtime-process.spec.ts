@@ -119,7 +119,7 @@ describe('Runtime environment', () => {
     })
     expect(env.DEEPSEEK_API_KEY).toBeUndefined()
     expect(env.PRIVATE_TOKEN).toBeUndefined()
-    expect(env.no_proxy).toBeUndefined()
+    expect(env.no_proxy).toBe(env.NO_PROXY)
   })
 
   it('redacts readiness tokens before logging', () => {

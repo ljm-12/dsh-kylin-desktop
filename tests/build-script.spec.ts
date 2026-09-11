@@ -10,6 +10,8 @@ describe('Native ARM64 build script', () => {
     expect(script).toContain('git -C "$SOURCE_DIR" describe --tags --exact-match')
     expect(script).toContain('quay.io/pypa/manylinux_2_28_aarch64')
     expect(script).toContain('patch-upstream-client-modules.mjs')
+    expect(script.indexOf('patch-upstream-proxy.mjs')).toBeGreaterThan(0)
+    expect(script.indexOf('patch-upstream-proxy.mjs')).toBeLessThan(script.indexOf('--targets=node24-linux-arm64'))
     expect(script).toContain('--targets=node24-linux-arm64')
     expect(script).toContain('pnpm run smoke-runtime')
     expect(script).toContain('verify-linux-artifacts.sh "$VERSION"')
