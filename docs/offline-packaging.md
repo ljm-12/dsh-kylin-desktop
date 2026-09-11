@@ -32,7 +32,7 @@
 - **工作流文件**：`.github/workflows/build-kylin-arm64-desktop.yml`
 - **运行环境**：原生 `ubuntu-24.04-arm` runner。
 - **构建机制**：
-  - 接收参数 `dsh_ref`（如 `dsh-v0.1.5-alpha.2`），拉取官方 `deepseek-ai/deepseek-harness` 对应的 Release Tag；
+  - 接收参数 `dsh_ref`（如 `dsh-v0.1.5-rc.2`），拉取官方 `deepseek-ai/deepseek-harness` 对应的 Release Tag；
   - 在官方仓库中执行 `corepack pnpm install --frozen-lockfile` 安装官方依赖；
   - 定位 `packages/subprocess/subprocess-local/node_modules/node-pty`；
   - 启动预置的 `manylinux_2_28_aarch64` 容器在 ARM64 环境下编译 `pty.node` 原生 C++ 扩展（校验 GLIBC ≤ 2.28）；
@@ -58,7 +58,7 @@
 ## 4. 打包步骤记录
 
 1. **版本排查**：
-   检查官方仓库 `deepseek-ai/deepseek-harness` 最新发布的 `dsh-v*` 标签版本（例如 `dsh-v0.1.5-alpha.2`）。
+   检查官方仓库 `deepseek-ai/deepseek-harness` 最新发布的 `dsh-v*` 标签版本（例如 `dsh-v0.1.5-rc.2`）。
 2. **触发构建**：
    通过 GitHub API 或 Actions 控制台触发 `Build Kylin ARM64 desktop` 工作流，传入选定的 `dsh_ref`。
 3. **验收校验与归档**：
