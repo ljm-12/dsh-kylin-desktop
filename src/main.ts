@@ -158,10 +158,10 @@ export const DEFAULT_SETTINGS_YAML = `agent-default-model:
 llm-pi-ai:
   providers:
     intranet-openai:
-      displayName: 局域网大模型
+      displayName: 内网 OpenAI 兼容服务
       api: openai-completions
       baseURL: http://192.168.0.40:3000/v1
-      apiKey: sk-no-key-required
+      apiKeyEnv: INTRANET_OPENAI_API_KEY
       models:
         - id: DeepSeek-V4-Flash-0731-w4a8
           name: DeepSeek-V4-Flash-0731-w4a8
@@ -210,7 +210,7 @@ export function healSettingsYaml(rawYaml: string): string {
         return block
           .split('\n')
           .map(line => {
-            if (/^ {4}(api|baseURL|apiKey|models|headers):/.test(line)) {
+            if (/^ {4}(api|baseURL|apiKey|apiKeyEnv|models|headers):/.test(line)) {
               return '  ' + line
             }
             return line
@@ -218,6 +218,20 @@ export function healSettingsYaml(rawYaml: string): string {
           .join('\n')
       },
     )
+  }
+
+  // 6. Ensure apiKeyEnv is present on intranet-openai (fix legacy apiKey: sk-no-key-required or missing apiKeyEnv)
+  if (healed.includes('intranet-openai:') && !healed.includes('apiKeyEnv:')) {
+    if (healed.includes('apiKey: sk-no-key-required')) {
+      healed = healed.replace(/apiKey:\s*sk-no-key-required/g, 'apiKeyEnv: INTRANET_OPENAI_API_KEY')
+    } else {
+      healed = healed.replace(
+        /(intranet-openai:[\s\S]*?baseURL:[^\n]+)/,
+        '$1\n      apiKeyEnv: INTRANET_OPENAI_API_KEY',
+      )
+    }
+  } else if (healed.includes('apiKey: sk-no-key-required')) {
+    healed = healed.replace(/apiKey:\s*sk-no-key-required/g, 'apiKeyEnv: INTRANET_OPENAI_API_KEY')
   }
 
   return healed

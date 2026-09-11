@@ -103,6 +103,8 @@ describe('Runtime environment', () => {
       PATH: '/usr/bin',
       DEEPSEEK_API_KEY: 'secret',
       PRIVATE_TOKEN: 'secret',
+      INTRANET_OPENAI_API_KEY: 'test-intranet-key',
+      INTRANET_AGENT_API_KEY: 'test-agent-key',
       XAUTHORITY: '/run/user/auth',
       no_proxy: 'model.intra',
     }, '/config/dsh')
@@ -112,6 +114,8 @@ describe('Runtime environment', () => {
       DSH_HOME: '/config/dsh',
       DSH_TELEMETRY_DISABLED: '1',
       NO_PROXY: '127.0.0.1,localhost,model.intra',
+      INTRANET_OPENAI_API_KEY: 'test-intranet-key',
+      INTRANET_AGENT_API_KEY: 'test-agent-key',
     })
     expect(env.DEEPSEEK_API_KEY).toBeUndefined()
     expect(env.PRIVATE_TOKEN).toBeUndefined()

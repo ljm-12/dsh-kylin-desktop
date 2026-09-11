@@ -46,9 +46,9 @@
 
 ## 3. 运维与交付约束
 
-1. **敏感环境变量清洗**：
-   - Electron 桌面主进程在拉起底层 Runtime 时，会主动过滤清洗父进程的环境变量（包含 `*_API_KEY` 与 `*_SECRET`）。
-   - 在终端 export `INTRANET_AGENT_API_KEY` 无效；内网模型凭据必须在应用界面 **Settings > Models** 中录入，凭据将保存在本地 Harness 凭据库中。
+1. **敏感环境变量清洗与放行**：
+   - Electron 桌面主进程在拉起底层 Runtime 时，会过滤未授权的敏感环境变量（如 `*_SECRET` 或无关 `*_API_KEY`），但显式放行 `INTRANET_OPENAI_API_KEY` 与 `INTRANET_AGENT_API_KEY`。
+   - 内网模型凭据推荐在应用界面 **Settings > Models** 中录入（保存在本地 Harness 凭据库 `~/.credentials.yaml`），也可直接通过环境变量 `INTRANET_OPENAI_API_KEY` / `INTRANET_AGENT_API_KEY` 提供。
 2. **产物归档与保留期**：
    - GitHub Actions 的构建 artifact 默认仅保留 14 天，且未配置自动 Release 发布。
    - 打包完成后应及时下载转存 `.deb` 以及配套的 `SHA256SUMS` 和 `BUILD-INFO.json`。

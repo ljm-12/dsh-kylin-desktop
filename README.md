@@ -52,7 +52,7 @@ Closing Electron sends `SIGTERM`, waits for the Runtime to exit, and uses `SIGKI
 
 Users configure the real intranet endpoint, model list, and credential in Settings > Models. Credentials remain in the Harness credential store and never enter the package or build metadata.
 
-Note for migrations from legacy `dsh-intranet-agent`: the desktop security boundary scrubs sensitive environment variables (such as `*_API_KEY` and `*_SECRET`) before spawning the Runtime. Exporting `INTRANET_AGENT_API_KEY` in the shell is deliberately ignored. Configure API credentials in Settings > Models so they are stored safely in the Harness credential store.
+Note for credentials: the desktop security boundary scrubs arbitrary sensitive environment variables (such as `*_SECRET` or unrelated `*_API_KEY`) before spawning the Runtime, but explicitly permits `INTRANET_OPENAI_API_KEY` and `INTRANET_AGENT_API_KEY`. API credentials can be configured directly in Settings > Models (stored safely in the Harness credential store) or provided via the `INTRANET_OPENAI_API_KEY` / `INTRANET_AGENT_API_KEY` environment variables.
 
 ## Verification boundaries
 

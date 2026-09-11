@@ -59,6 +59,34 @@ llm-pi-ai:
       expect(healed).toContain('id: local-model')
       expect(healed).toContain('model: DeepSeek-V4-Flash-0731-w4a8')
     })
+
+    it('heals apiKey: sk-no-key-required to apiKeyEnv: INTRANET_OPENAI_API_KEY', () => {
+      const input = `
+llm-pi-ai:
+  providers:
+    intranet-openai:
+      displayName: 局域网大模型
+      api: openai-completions
+      baseURL: http://192.168.0.40:3000/v1
+      apiKey: sk-no-key-required
+`
+      const healed = healSettingsYaml(input)
+      expect(healed).toContain('apiKeyEnv: INTRANET_OPENAI_API_KEY')
+      expect(healed).not.toContain('apiKey: sk-no-key-required')
+    })
+
+    it('injects apiKeyEnv: INTRANET_OPENAI_API_KEY if missing on intranet-openai', () => {
+      const input = `
+llm-pi-ai:
+  providers:
+    intranet-openai:
+      displayName: 局域网大模型
+      api: openai-completions
+      baseURL: http://192.168.0.40:3000/v1
+`
+      const healed = healSettingsYaml(input)
+      expect(healed).toContain('apiKeyEnv: INTRANET_OPENAI_API_KEY')
+    })
   })
 
   describe('ensureInitialWorkspaceAndSettings', () => {

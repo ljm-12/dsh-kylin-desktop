@@ -449,6 +449,47 @@ export async function discoverModels(request: ModelDiscoveryRequest): Promise<Di
     expect(patched).not.toContain('bridge')
     expect(existsSync(join(inputBarLibDir, 'stale.js'))).toBe(false)
   })
+
+  it('correctly applies intranet credentials cross-resolution patch to llm-pi-ai index.ts', () => {
+    const llmDir = join(tempDir, 'packages/llm/llm-pi-ai/src')
+    const llmLibDir = join(tempDir, 'packages/llm/llm-pi-ai/lib')
+    mkdirSync(llmDir, { recursive: true })
+    mkdirSync(llmLibDir, { recursive: true })
+    writeFileSync(join(llmLibDir, 'stale.js'), '// stale')
+
+    const sampleLlmIndexTs = `
+  const resolveApiKey = async (
+    provider: string,
+    profile: ResolvedPiAiProviderProfile,
+  ): Promise<string | undefined> => {
+    const ref = profile.apiKeyEnv
+    // Only a profile that names no credential at all defers to pi-ai's
+    // provider-native discovery. Once one is named, a miss must fail loud:
+    // handing pi-ai \`undefined\` would let it pick up an unrelated ambient key
+    // (OPENAI_API_KEY and friends), billing another tenant for a request the
+    // deployment meant to authenticate differently.
+    if (ref === undefined) return undefined
+    const credentials = ctx.get('credentials')
+    const hit = credentials !== undefined
+      ? (await credentials.resolve(ref))?.value
+      // Without the seam the environment is the whole credential plane.
+      : launchEnvironmentOf(ctx).get(ref)?.value
+    if (hit !== undefined && hit.length > 0) return assertUsableApiKey(hit, 'llm-pi-ai', ref)
+    throw new LlmError('no key')
+  }
+`
+    const indexFile = join(llmDir, 'index.ts')
+    writeFileSync(indexFile, sampleLlmIndexTs, 'utf8')
+
+    const stdout = execFileSync(process.execPath, [patchScript, tempDir], { encoding: 'utf8' })
+    expect(stdout).toContain('successfully patched')
+
+    const patched = readFileSync(indexFile, 'utf8')
+    expect(patched).toContain("provider === 'intranet-openai' ? 'INTRANET_OPENAI_API_KEY' : undefined")
+    expect(patched).toContain("ref === 'INTRANET_AGENT_API_KEY' || ref === 'INTRANET_OPENAI_API_KEY'")
+    expect(patched).toContain("process.env[ref]")
+    expect(existsSync(join(llmLibDir, 'stale.js'))).toBe(false)
+  })
 })
 
 

@@ -836,10 +836,89 @@ function patchUiConversationInputBar(sourceDir) {
   }
 }
 
+// 13. Patch llm-pi-ai index.ts to seamlessly resolve intranet credentials from UI store and environment
+function patchLlmPiAiApiKeyResolution(sourceDir) {
+  const targetPath = resolve(sourceDir, 'packages/llm/llm-pi-ai/src/index.ts')
+  if (!existsSync(targetPath)) {
+    console.log(`patch-upstream: llm-pi-ai index.ts not found at ${targetPath}, skipping.`)
+    return
+  }
+
+  let code = readFileSync(targetPath, 'utf8')
+  const isCRLF = code.includes('\r\n')
+  code = code.replace(/\r\n/g, '\n')
+
+  if (code.includes('INTRANET_OPENAI_API_KEY') && code.includes('altRef')) {
+    console.log('patch-upstream: llm-pi-ai index.ts already patched, skipping.')
+    return
+  }
+
+  const needle = `  const resolveApiKey = async (
+    provider: string,
+    profile: ResolvedPiAiProviderProfile,
+  ): Promise<string | undefined> => {
+    const ref = profile.apiKeyEnv
+    // Only a profile that names no credential at all defers to pi-ai's
+    // provider-native discovery. Once one is named, a miss must fail loud:
+    // handing pi-ai \`undefined\` would let it pick up an unrelated ambient key
+    // (OPENAI_API_KEY and friends), billing another tenant for a request the
+    // deployment meant to authenticate differently.
+    if (ref === undefined) return undefined
+    const credentials = ctx.get('credentials')
+    const hit = credentials !== undefined
+      ? (await credentials.resolve(ref))?.value
+      // Without the seam the environment is the whole credential plane.
+      : launchEnvironmentOf(ctx).get(ref)?.value
+    if (hit !== undefined && hit.length > 0) return assertUsableApiKey(hit, 'llm-pi-ai', ref)`
+
+  const replacement = `  const resolveApiKey = async (
+    provider: string,
+    profile: ResolvedPiAiProviderProfile,
+  ): Promise<string | undefined> => {
+    const defaultRef = provider === 'intranet-openai' ? 'INTRANET_OPENAI_API_KEY' : undefined
+    const ref = profile.apiKeyEnv ?? defaultRef
+    if (ref === undefined) return undefined
+    const credentials = ctx.get('credentials')
+    let hit = credentials !== undefined
+      ? (await credentials.resolve(ref as any))?.value
+      // Without the seam the environment is the whole credential plane.
+      : launchEnvironmentOf(ctx).get(ref as any)?.value
+    if ((hit === undefined || hit.length === 0) && (ref === 'INTRANET_AGENT_API_KEY' || ref === 'INTRANET_OPENAI_API_KEY')) {
+      const altRef = ref === 'INTRANET_AGENT_API_KEY' ? 'INTRANET_OPENAI_API_KEY' : 'INTRANET_AGENT_API_KEY'
+      hit = credentials !== undefined
+        ? (await credentials.resolve(altRef as any))?.value
+        : launchEnvironmentOf(ctx).get(altRef as any)?.value
+    }
+    if (hit === undefined || hit.length === 0) {
+      hit = process.env[ref] ?? (ref === 'INTRANET_AGENT_API_KEY' ? process.env.INTRANET_OPENAI_API_KEY : process.env.INTRANET_AGENT_API_KEY)
+    }
+    if (hit !== undefined && hit.length > 0) return assertUsableApiKey(hit, 'llm-pi-ai', ref as any)`
+
+  if (!code.includes(needle)) {
+    console.warn('patch-upstream: could not find resolveApiKey needle in llm-pi-ai index.ts')
+    return
+  }
+
+  code = code.replace(needle, replacement)
+  if (isCRLF) {
+    code = code.replace(/\n/g, '\r\n')
+  }
+
+  writeFileSync(targetPath, code, 'utf8')
+  console.log(`patch-upstream: successfully patched ${targetPath}`)
+
+  const staleLibDir = join(sourceDir, 'packages/llm/llm-pi-ai/lib')
+  if (existsSync(staleLibDir)) {
+    console.log(`patch-upstream: removing stale ${staleLibDir}`)
+    rmSync(staleLibDir, { recursive: true, force: true })
+  }
+}
+
 patchClientModules(sourceDir)
 patchAgentPresetsDiscovery(sourceDir)
 patchSessionControllerAgent(sourceDir)
 patchLlmDiscovery(sourceDir)
+patchLlmPiAiApiKeyResolution(sourceDir)
 patchUiConversationRoot(sourceDir)
 patchUiSidebar(sourceDir)
 patchUiAttachment(sourceDir)

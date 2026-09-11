@@ -47,11 +47,16 @@ export function parseRuntimeReadyUrl(line: string): URL | undefined {
   return url
 }
 
+export function isAllowedRuntimeEnv(name: string): boolean {
+  if (/^INTRANET_(?:AGENT|OPENAI)_API_KEY$/i.test(name)) return true
+  return !SENSITIVE_ENV_NAME.test(name)
+}
+
 /** Remove credential-bearing values before the desktop shell launches dsh. */
 export function createRuntimeEnvironment(parent: NodeJS.ProcessEnv, dshHome: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {}
   for (const [name, value] of Object.entries(parent)) {
-    if (value === undefined || SENSITIVE_ENV_NAME.test(name)) continue
+    if (value === undefined || !isAllowedRuntimeEnv(name)) continue
     env[name] = value
   }
   env.DSH_HOME = dshHome
