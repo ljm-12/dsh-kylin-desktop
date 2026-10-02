@@ -19,7 +19,7 @@ jobs:
           ref: dsh-v0.2.0-rc.2
           path: upstream
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Generate disposable test CA
