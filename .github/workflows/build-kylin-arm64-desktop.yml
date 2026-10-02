@@ -36,7 +36,7 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: upstream/pnpm-lock.yaml
-      - uses: actions/setup-python@v6.3.0
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: '3.10'
       - name: Inject separately stored public proxy CA
