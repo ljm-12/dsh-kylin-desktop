@@ -1,0 +1,10 @@
+{
+  "name": "dsh-kylin-desktop-packaging",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Kylin ARM64 packaging adapter for the official DeepSeek Harness Desktop",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}

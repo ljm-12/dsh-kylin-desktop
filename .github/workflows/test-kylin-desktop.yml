@@ -1,0 +1,41 @@
+name: Test Kylin desktop adapter
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  adapter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: packaging
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: dsh-v0.2.0-rc.2
+          path: upstream
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Generate disposable test CA
+        working-directory: packaging
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout "$RUNNER_TEMP/adapter-test-ca.key" -out config/proxy-root-ca.crt \
+            -days 1 -subj '/CN=Disposable Adapter Test CA' \
+            -addext 'basicConstraints=critical,CA:true' -addext 'keyUsage=critical,keyCertSign,cRLSign' 2>/dev/null
+      - name: Test platform adapter and TLS trust
+        working-directory: packaging
+        env:
+          DSH_TEST_SOURCE: ${{ github.workspace }}/upstream
+        run: |
+          node --test tests/*.test.mjs
+          bash -n scripts/*.sh build/*.sh
+      - name: Remove disposable trust material
+        if: always()
+        run: rm -f -- packaging/config/proxy-root-ca.crt "$RUNNER_TEMP/adapter-test-ca.key"

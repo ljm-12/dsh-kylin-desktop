@@ -1,0 +1,81 @@
+name: Build Kylin ARM64 official desktop
+on:
+  workflow_dispatch:
+    inputs:
+      dsh_ref:
+        description: Exact official dsh-v tag (adapter tested with dsh-v0.2.0-rc.2)
+        required: true
+        default: dsh-v0.2.0-rc.2
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: build-kylin-arm64-${{ inputs.dsh_ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: packaging-source
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: ${{ inputs.dsh_ref }}
+          fetch-depth: 1
+          path: upstream
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: upstream/pnpm-lock.yaml
+      - uses: actions/setup-python@v6.3.0
+        with:
+          python-version: '3.10'
+      - name: Inject separately stored public proxy CA
+        working-directory: packaging-source
+        env:
+          DSH_PROXY_CA_CERT_PEM: ${{ secrets.DMZ_PROXY_CA_CERT }}
+        run: |
+          test -n "$DSH_PROXY_CA_CERT_PEM" || { echo 'Missing DMZ_PROXY_CA_CERT Actions secret.' >&2; exit 1; }
+          node scripts/prepare-proxy-ca.mjs
+      - name: Prepare native Linux toolchain
+        run: |
+          corepack enable
+          sudo apt-get update
+          sudo apt-get install -y build-essential musl-tools libgtk-3-0 libnss3 libasound2t64 libxss1 libxtst6 xvfb
+      - name: Verify tag identity and platform adapter
+        env:
+          DSH_REF: ${{ inputs.dsh_ref }}
+          DSH_TEST_SOURCE: ${{ github.workspace }}/upstream
+        working-directory: packaging-source
+        run: |
+          case "$DSH_REF" in dsh-v*) ;; *) exit 1 ;; esac
+          test "$(git -C ../upstream describe --tags --exact-match)" = "$DSH_REF"
+          node --test tests/*.test.mjs
+          bash -n scripts/*.sh build/*.sh
+      - name: Build official Desktop with Kylin packaging adapter
+        env:
+          DSH_REF: ${{ inputs.dsh_ref }}
+        run: bash packaging-source/scripts/build-on-arm64.sh "$GITHUB_WORKSPACE/upstream" "$DSH_REF"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: DeepSeek-Harness-Kylin-ARM64-${{ inputs.dsh_ref }}
+          path: |
+            packaging-source/dist/*.deb
+            packaging-source/dist/SHA256SUMS
+            packaging-source/dist/BUILD-INFO.json
+            packaging-source/dist/UPSTREAM-PATCH.diff
+            packaging-source/dist/RUNTIME-PATCH.diff
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove injected certificate from runner
+        if: always()
+        run: rm -f -- packaging-source/config/proxy-root-ca.crt
