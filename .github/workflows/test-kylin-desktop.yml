@@ -1,0 +1,52 @@
+name: Test Kylin desktop adapter
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  adapter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: packaging
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: dsh-v0.2.0-rc.2
+          path: upstream
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Generate disposable test CA
+        working-directory: packaging
+        run: |
+          mkdir -p config
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout "$RUNNER_TEMP/adapter-test-ca.key" -out config/proxy-root-ca.crt \
+            -days 1 -subj '/CN=Disposable Adapter Test CA' \
+            -addext 'basicConstraints=critical,CA:true' -addext 'keyUsage=critical,keyCertSign,cRLSign' 2>/dev/null
+      - name: Test platform adapter and TLS trust
+        working-directory: packaging
+        env:
+          DSH_TEST_SOURCE: ${{ github.workspace }}/upstream
+        run: |
+          node --test tests/*.test.mjs
+          bash -n scripts/*.sh build/*.sh
+      - name: Remove disposable trust material
+        if: always()
+        run: rm -f -- packaging/config/proxy-root-ca.crt "$RUNNER_TEMP/adapter-test-ca.key"
+      - name: Qualify native Linux tray before the full build
+        working-directory: packaging
+        env:
+          DSH_TEST_SOURCE: ${{ github.workspace }}/upstream
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-0 libnss3 libasound2t64 libxss1 libxtst6 xvfb openbox xdotool dbus-x11 python3-dbus python3-gi
+          npm install --prefix "$RUNNER_TEMP/tray-electron" --no-package-lock --ignore-scripts electron@44.5.1
+          env -u ELECTRON_SKIP_BINARY_DOWNLOAD node "$RUNNER_TEMP/tray-electron/node_modules/electron/install.js"
+          timeout 90s dbus-run-session -- xvfb-run -a node scripts/native-tray-smoke.mjs "$RUNNER_TEMP/tray-electron/node_modules/electron/dist/electron"
