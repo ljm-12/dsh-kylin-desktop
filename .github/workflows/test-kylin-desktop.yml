@@ -40,13 +40,14 @@ jobs:
       - name: Remove disposable trust material
         if: always()
         run: rm -f -- packaging/config/proxy-root-ca.crt "$RUNNER_TEMP/adapter-test-ca.key"
-      - name: Qualify native Linux tray before the full build
+      - name: Qualify native Linux tray and caption before the full build
         working-directory: packaging
         env:
           DSH_TEST_SOURCE: ${{ github.workspace }}/upstream
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-0 libnss3 libasound2t64 libxss1 libxtst6 xvfb openbox xdotool dbus-x11 python3-dbus python3-gi
+          sudo apt-get install -y libgtk-3-0 libnss3 libasound2t64 libxss1 libxtst6 xvfb openbox xdotool x11-utils dbus-x11 python3-dbus python3-gi
           npm install --prefix "$RUNNER_TEMP/tray-electron" --no-package-lock --ignore-scripts electron@44.5.1
           env -u ELECTRON_SKIP_BINARY_DOWNLOAD node "$RUNNER_TEMP/tray-electron/node_modules/electron/install.js"
           timeout 90s dbus-run-session -- xvfb-run -a node scripts/native-tray-smoke.mjs "$RUNNER_TEMP/tray-electron/node_modules/electron/dist/electron"
+          timeout 60s dbus-run-session -- xvfb-run -a --server-args='-screen 0 1600x1000x24' node scripts/native-caption-smoke.mjs "$RUNNER_TEMP/tray-electron/node_modules/electron/dist/electron"

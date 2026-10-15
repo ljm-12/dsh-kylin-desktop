@@ -70,7 +70,7 @@ DSH_TEST_NODE="$APP/deepseek-harness-kylin.bin" ELECTRON_RUN_AS_NODE=1 \
 (cd "$DSH_SOURCE_DIR" && corepack pnpm exec tsx "$ROOT/scripts/verify-prepared-runtime.ts" "$APP")
 bash "$ROOT/scripts/verify-desktop-connection.sh" "$DSH_SOURCE_DIR" \
   "$DSH_SOURCE_DIR/apps/desktop/.desktop-build/targets/linux-arm64/electron/electron" "$APP"
-timeout 180s dbus-run-session -- xvfb-run -a node "$ROOT/scripts/packaged-launcher-smoke.mjs" "$APP"
+timeout 180s dbus-run-session -- xvfb-run -a --server-args='-screen 0 1600x1000x24' node "$ROOT/scripts/packaged-launcher-smoke.mjs" "$APP"
 dpkg-deb -e "$DEB" "$VERIFY/control"
 bash -n "$VERIFY/control/postinst" "$VERIFY/control/postrm"
 (cd "$ROOT/dist" && sha256sum "$(basename "$DEB")" BUILD-INFO.json UPSTREAM-PATCH.diff RUNTIME-PATCH.diff > SHA256SUMS)

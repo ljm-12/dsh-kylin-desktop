@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
+import { dragCaption } from './caption-drag-smoke.mjs'
 
 const [app] = process.argv.slice(2)
 assert.ok(app, 'packaged app path required')
@@ -213,16 +214,7 @@ try {
   const decorations = execFileSync('xprop', ['-id', windowId, '_MOTIF_WM_HINTS'], { encoding: 'utf8' })
   const hints = decorations.match(/=\s*(0x[\da-f]+|\d+),\s*(0x[\da-f]+|\d+),\s*(0x[\da-f]+|\d+)/i)
   assert.ok(hints && (Number(hints[1]) & 2) !== 0 && Number(hints[3]) === 0, 'System titlebar still decorates the workspace')
-  const geometry = () => Object.fromEntries(x11(['getwindowgeometry', '--shell', windowId]).trim().split('\n')
-    .map(line => line.split('=')).map(([key, value]) => [key, Number(value)]))
-  const beforeDrag = geometry()
-  const dragX = Math.floor(caption.rect.x + caption.rect.width / 2)
-  x11(['mousemove', '--window', windowId, String(dragX), '20', 'mousedown', '1'])
-  x11(['mousemove', '--sync', String(beforeDrag.X + dragX + 48), String(beforeDrag.Y + 52)])
-  x11(['mouseup', '1'])
-  await delay(300)
-  const afterDrag = geometry()
-  assert.ok(afterDrag.X !== beforeDrag.X || afterDrag.Y !== beforeDrag.Y, 'Integrated caption cannot drag the window')
+  const dragX = await dragCaption(windowId, caption.rect, x11)
   // Electron draws the Linux caption buttons to the right of its exposed safe area.
   const controlsWidth = caption.width - caption.rect.x - caption.rect.width
   assert.ok(controlsWidth > 0 && controlsWidth < 200, 'Window controls have no usable right-hand area')

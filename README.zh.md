@@ -26,7 +26,7 @@ NODE_EXTRA_CA_CERTS=/data/proxy-root-ca.crt deepseek-harness-kylin
 
 成功 artifact 包含 `.deb`、`SHA256SUMS`、`BUILD-INFO.json`、`UPSTREAM-PATCH.diff` 和 `RUNTIME-PATCH.diff`，保留 30 天。元数据记录官方提交、打包提交、Debian 构建修订号及证书/补丁哈希。
 
-构建检查包括真实 Electron Node TLS，以及内网证书链仅加载根 CA 失败、加载根 CA 和中间 CA 成功的回归验证、官方 Host/Office 完整性与冒烟、所有外置 ELF 的 ARM64 和 GLIBC ≤ 2.28、压缩 RPC/事件流，以及物料化目录和最终 ASAR 各 60 秒的官方页面/Host 原生 WebSocket、SSE 连续性。最终包还通过实际桌面启动器运行官方主进程，操作欢迎页的官方“跳过”进入工作区，再连续 60 秒检查工作区 WebSocket/SSE、页面不重载及最小化/恢复；Openbox 和 xdotool 检查工作区不含系统标题栏，执行顶栏拖动、融合窗口按钮最大化/还原/最小化/关闭及托盘恢复操作；独立 D-Bus StatusNotifier 测试宿主验证托盘注册、图标、点击恢复、“显示”和“退出”菜单以及正常退出。这项检查使用独立 profile 和临时调试端口，生产启动不启用调试端口。临时测试使用隔离数据，不读取用户配置。云端测试环境为 Ubuntu ARM64；麒麟实机连接恢复情况见下方修复记录。
+构建检查包括真实 Electron Node TLS，以及内网证书链仅加载根 CA 失败、加载根 CA 和中间 CA 成功的回归验证、官方 Host/Office 完整性与冒烟、所有外置 ELF 的 ARM64 和 GLIBC ≤ 2.28、压缩 RPC/事件流，以及物料化目录和最终 ASAR 各 60 秒的官方页面/Host 原生 WebSocket、SSE 连续性。最终包还通过实际桌面启动器运行官方主进程，操作欢迎页的官方“跳过”进入工作区，再连续 60 秒检查工作区 WebSocket/SSE、页面不重载及最小化/恢复；Openbox 和 xdotool 检查工作区不含系统标题栏，执行顶栏拖动、融合窗口按钮最大化/还原/最小化/关闭及托盘恢复操作；独立 D-Bus StatusNotifier 测试宿主验证托盘注册、图标、点击恢复、“显示”和“退出”菜单以及正常退出。独立原生 Electron 夹具会在完整打包前验证适配窗口和官方顶栏样式；拖动测试在按下、移动和释放之间等待 Electron 与 X11 窗口管理器处理事件，并使用 1600×1000 虚拟屏幕为移动预留空间。这项检查使用独立 profile 和临时调试端口，生产启动不启用调试端口。临时测试使用隔离数据，不读取用户配置。云端测试环境为 Ubuntu ARM64；麒麟实机连接恢复情况见下方修复记录。
 
 本地适配层检查：
 
