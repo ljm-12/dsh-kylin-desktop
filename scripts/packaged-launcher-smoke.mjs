@@ -188,6 +188,61 @@ try {
   assert.equal(windows.length,1,'Expected exactly one visible official workspace window')
   assert.match(windows[0],/^\d+$/,'Invalid native X11 window ID')
   const windowId = windows[0]
+  const captionResult = await command('Runtime.evaluate', { expression: `JSON.stringify((() => {
+    const root = document.documentElement;
+    const overlay = navigator.windowControlsOverlay;
+    const rect = overlay?.getTitlebarAreaRect();
+    const menu = document.querySelector('[data-windows-menu]');
+    const buttons = Array.from(menu?.shadowRoot?.querySelectorAll('button') ?? []);
+    return { platform: root.dataset.platform, caption: root.hasAttribute('data-windows-titlebar'),
+      height: root.style.getPropertyValue('--dsh-windows-titlebar-height'),
+      overlay: overlay?.visible, rect: rect?.toJSON(), width: innerWidth,
+      menus: buttons.map(button => ({ text: button.textContent, y: button.getBoundingClientRect().y,
+        bottom: button.getBoundingClientRect().bottom })) };
+  })())`, returnByValue: true }, workspaceSession)
+  assert.ok(!captionResult.exceptionDetails, 'Unable to inspect integrated caption')
+  const caption = JSON.parse(captionResult.result.value)
+  assert.equal(caption.platform, 'linux')
+  assert.equal(caption.caption, true)
+  assert.equal(caption.height, '40px')
+  assert.equal(caption.overlay, true, 'Native window buttons are missing')
+  assert.equal(caption.rect.y, 0)
+  assert.ok(caption.rect.height > 0 && caption.rect.height <= 40)
+  assert.equal(caption.menus.length, 2, 'Integrated application/edit menus are missing')
+  assert.ok(caption.menus.every(item => item.text && item.y >= 0 && item.bottom <= 40), 'Menus escaped the caption row')
+  const decorations = execFileSync('xprop', ['-id', windowId, '_MOTIF_WM_HINTS'], { encoding: 'utf8' })
+  const hints = decorations.match(/=\s*(0x[\da-f]+|\d+),\s*(0x[\da-f]+|\d+),\s*(0x[\da-f]+|\d+)/i)
+  assert.ok(hints && (Number(hints[1]) & 2) !== 0 && Number(hints[3]) === 0, 'System titlebar still decorates the workspace')
+  const geometry = () => Object.fromEntries(x11(['getwindowgeometry', '--shell', windowId]).trim().split('\n')
+    .map(line => line.split('=')).map(([key, value]) => [key, Number(value)]))
+  const beforeDrag = geometry()
+  const dragX = Math.floor(caption.rect.x + caption.rect.width / 2)
+  x11(['mousemove', '--window', windowId, String(dragX), '20', 'mousedown', '1'])
+  x11(['mousemove', '--sync', String(beforeDrag.X + dragX + 48), String(beforeDrag.Y + 52)])
+  x11(['mouseup', '1'])
+  await delay(300)
+  const afterDrag = geometry()
+  assert.ok(afterDrag.X !== beforeDrag.X || afterDrag.Y !== beforeDrag.Y, 'Integrated caption cannot drag the window')
+  // Electron draws the Linux caption buttons to the right of its exposed safe area.
+  const controlsWidth = caption.width - caption.rect.x - caption.rect.width
+  assert.ok(controlsWidth > 0 && controlsWidth < 200, 'Window controls have no usable right-hand area')
+  const nativeButton = index => x11(['mousemove', '--window', windowId,
+    String(Math.floor(caption.rect.x + caption.rect.width + controlsWidth * (index + 0.5) / 3)), '20', 'click', '1'])
+  nativeButton(1)
+  await delay(300)
+  assert.match(execFileSync('xprop', ['-id', windowId, '_NET_WM_STATE'], { encoding: 'utf8' }), /_NET_WM_STATE_MAXIMIZED_VERT/,
+    'Integrated maximize button did not maximize')
+  // Restore through the titlebar double-click before using the original geometry again.
+  x11(['mousemove', '--window', windowId, String(dragX), '20', 'click', '--repeat', '2', '--delay', '100', '1'])
+  await delay(300)
+  assert.doesNotMatch(execFileSync('xprop', ['-id', windowId, '_NET_WM_STATE'], { encoding: 'utf8' }), /_NET_WM_STATE_MAXIMIZED_VERT/)
+  nativeButton(0)
+  await delay(300)
+  const minimized = await command('Runtime.evaluate', { expression: 'document.visibilityState', returnByValue: true }, workspaceSession)
+  assert.equal(minimized.result.value, 'hidden', 'Integrated minimize button did not minimize')
+  trayAction('activate')
+  await delay(300)
+  console.log('Installed integrated caption ready:', JSON.stringify(caption))
   const icon = execFileSync('xprop', ['-id', windowId, '-len', '64', '_NET_WM_ICON'], { encoding: 'utf8' })
   assert.doesNotMatch(icon, /not found|no such atom/, 'Workspace did not publish its taskbar icon')
   const windowState = execFileSync('xprop', ['-id', windowId, '_NET_WM_STATE'], { encoding: 'utf8' })
@@ -224,8 +279,10 @@ try {
   assert.ok(transports.replies > 0,'Workspace never received API replies')
   assert.equal(existsSync(join(app,'resources/transport-diagnostics.cjs')),false,'Temporary diagnostic observer remains in the package')
   x11(['windowactivate','--sync',windowId])
-  x11(['key','--clearmodifiers','alt+F4'])
+  nativeButton(2)
   await delay(500)
+  const closed = await command('Runtime.evaluate', { expression: 'document.visibilityState', returnByValue: true }, workspaceSession)
+  assert.equal(closed.result.value, 'hidden', 'Integrated close button did not hide the workspace to tray')
   trayAction('open')
   await delay(500)
   const restored = await command('Runtime.evaluate', {expression:'document.visibilityState',returnByValue:true}, workspaceSession)
@@ -250,7 +307,7 @@ try {
     } catch (error) { if (!['ENOENT', 'ESRCH', 'EACCES'].includes(error.code)) throw error }
   }
   assert.deepEqual(remaining, [], 'Tray Quit left detached desktop/Host workers behind')
-  console.log('Installed launcher smoke passed: CA + taskbar icon + StatusNotifier tray + close/hide + click/menu restore + graceful menu quit + 60s mux/SSE', JSON.stringify(transports))
+  console.log('Installed launcher smoke passed: integrated caption + drag/maximize/minimize/close + CA + taskbar icon + StatusNotifier tray + click/menu restore + graceful menu quit + 60s mux/SSE', JSON.stringify(transports))
 } catch (error) { console.error(output); throw error }
 finally {
   windowManager.kill()

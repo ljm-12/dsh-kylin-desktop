@@ -2,13 +2,13 @@
 
 [English](README.md) | 中文
 
-固定构建官方 `dsh-v0.2.0-rc.2`，提交 `639ed015397290b3745d163aafe02ffee4aa3f84`。使用官方 `apps/desktop`、界面、Host、账号、连接、插件和请求转发实现。登录及断线恢复遵循该官方版本本身的行为。
+固定构建官方 `dsh-v0.2.0-rc.2`，提交 `639ed015397290b3745d163aafe02ffee4aa3f84`。使用官方 `apps/desktop`、产品界面、Host、账号、连接、插件和请求转发实现，并加入下述 Linux 窗口适配。登录及断线恢复遵循该官方版本本身的行为。
 
 ## 必要打包适配
 
 官方标签只声明 macOS/Windows 桌面目标，因此保留 Linux ARM64 构建路径、Debian 安装入口、实际随包 node-pty 的 manylinux 2.28 重编译和完整性验证。Office 保留一处 ASAR 兼容处理：缺失文件的 `null` 和 `undefined` 均视为不存在，使官方 Linux WASM 后端能正确回退。ws 发送器增加一处空帧兼容处理：只写入完整帧头，省去零长度载荷的 iovec，传输字节保持一致。两处差异及哈希会写入 `BUILD-INFO.json` 和 `RUNTIME-PATCH.diff`。
 
-源码检查允许八个官方构建脚本/CLI 文件变化、主进程中逐字核验的 Linux 托盘适配，以及逐字节核验的 Linux 进程清理模块；其余官方运行源码、页面和样式保持不变。最终安装包的 Connection/Gateway 客户端必须逐字节匹配官方编译结果。界面使用官方针对当前平台的默认行为，不强制套用 Windows 标题栏。Linux 固定使用 Electron 44.5.1，包含 44.0.0 托盘注册格式错误的[上游修复](https://github.com/electron/electron/pull/53214)；官方依赖锁文件保持不变，运行时准备和 electron-builder 使用同一明确版本。
+源码检查允许八个官方构建脚本/CLI 文件变化、主进程及两个 preload 中逐字核验的 Linux 托盘和标题栏适配，以及逐字节核验的 Linux 进程清理模块；其余官方运行源码、产品页面和共享样式保持不变。最终安装包的 Connection/Gateway 客户端必须逐字节匹配官方编译结果。Linux 工作区复用官方 40 像素融合顶栏，将应用/编辑菜单和 Electron 的最小化、最大化、关闭按钮放在同一行，替代系统标题栏及独立原生菜单栏；拖动、主题颜色和全屏状态沿用官方实现，其他窗口保留系统外框。Linux 固定使用 Electron 44.5.1，包含 44.0.0 托盘注册格式错误的[上游修复](https://github.com/electron/electron/pull/53214)；官方依赖锁文件保持不变，运行时准备和 electron-builder 使用同一明确版本。
 
 ## 代理公钥证书
 
@@ -26,7 +26,7 @@ NODE_EXTRA_CA_CERTS=/data/proxy-root-ca.crt deepseek-harness-kylin
 
 成功 artifact 包含 `.deb`、`SHA256SUMS`、`BUILD-INFO.json`、`UPSTREAM-PATCH.diff` 和 `RUNTIME-PATCH.diff`，保留 30 天。元数据记录官方提交、打包提交、Debian 构建修订号及证书/补丁哈希。
 
-构建检查包括真实 Electron Node TLS，以及内网证书链仅加载根 CA 失败、加载根 CA 和中间 CA 成功的回归验证、官方 Host/Office 完整性与冒烟、所有外置 ELF 的 ARM64 和 GLIBC ≤ 2.28、压缩 RPC/事件流，以及物料化目录和最终 ASAR 各 60 秒的官方页面/Host 原生 WebSocket、SSE 连续性。最终包还通过实际桌面启动器运行官方主进程，操作欢迎页的官方“跳过”进入工作区，再连续 60 秒检查工作区 WebSocket/SSE、页面不重载及最小化/恢复；Openbox 和 xdotool 执行真实 X11 最小化、关闭及恢复操作；独立 D-Bus StatusNotifier 测试宿主验证托盘注册、图标、点击恢复、“显示”和“退出”菜单以及正常退出。这项检查使用独立 profile 和临时调试端口，生产启动不启用调试端口。临时测试使用隔离数据，不读取用户配置。云端测试环境为 Ubuntu ARM64；麒麟实机连接恢复情况见下方修复记录。
+构建检查包括真实 Electron Node TLS，以及内网证书链仅加载根 CA 失败、加载根 CA 和中间 CA 成功的回归验证、官方 Host/Office 完整性与冒烟、所有外置 ELF 的 ARM64 和 GLIBC ≤ 2.28、压缩 RPC/事件流，以及物料化目录和最终 ASAR 各 60 秒的官方页面/Host 原生 WebSocket、SSE 连续性。最终包还通过实际桌面启动器运行官方主进程，操作欢迎页的官方“跳过”进入工作区，再连续 60 秒检查工作区 WebSocket/SSE、页面不重载及最小化/恢复；Openbox 和 xdotool 检查工作区不含系统标题栏，执行顶栏拖动、融合窗口按钮最大化/还原/最小化/关闭及托盘恢复操作；独立 D-Bus StatusNotifier 测试宿主验证托盘注册、图标、点击恢复、“显示”和“退出”菜单以及正常退出。这项检查使用独立 profile 和临时调试端口，生产启动不启用调试端口。临时测试使用隔离数据，不读取用户配置。云端测试环境为 Ubuntu ARM64；麒麟实机连接恢复情况见下方修复记录。
 
 本地适配层检查：
 
@@ -48,7 +48,7 @@ DSH_PROXY_CA_CERT_FILE=/path/to/proxy-ca-bundle.crt bash scripts/build-on-arm64.
 
 回归测试注入 EFAULT 复现旧版故障，逐字节比较 40 种帧编码，并验证 30 轮空 Ping/Pong、数据和压缩传输及正常关闭。测试覆盖打包前运行库和最终 ASAR，测试夹具不进入应用安装包。
 
-正式包使用官方 `lib/main.js` 入口，并加入精确的 Linux 托盘适配：任务栏及托盘使用 PNG 图标，关闭窗口收起到托盘，点击图标或菜单恢复，菜单“退出”先沿用官方 Host 和存储关闭流程，再结束仍然存活的应用子进程，包括已被跟踪到的脱离进程组的工作进程；核对进程启动时间以防止误杀复用的 PID。若托盘创建失败，关闭窗口改为请求退出，避免留下无法访问的隐藏进程。测试按 UKUI 规则拒绝错误的服务名/路径组合，通过唯一 D-Bus 名访问托盘，并检查退出后没有脱离进程组的后台进程。已移除临时连接诊断和预加载钩子，不再写入 `DeepSeek-Harness-connection-diagnostics.jsonl`。已有文件来自旧诊断版本。官方会话、附件及模型输出仍按官方逻辑保存。
+正式包使用官方 `lib/main.js` 入口，并加入精确的 Linux 托盘适配：任务栏及托盘使用 PNG 图标，关闭窗口收起到托盘，点击图标或菜单恢复，菜单“退出”先沿用官方 Host 和存储关闭流程，再结束仍然存活的应用子进程，包括已被跟踪到的脱离进程组的工作进程；核对进程启动时间以防止误杀复用的 PID。若托盘创建失败，关闭窗口改为请求退出，避免留下无法访问的隐藏进程。测试按 UKUI 规则拒绝错误的服务名/路径组合，通过唯一 D-Bus 名访问托盘，并检查退出后没有脱离进程组的后台进程。已移除临时连接诊断和诊断用预加载钩子，不再写入 `DeepSeek-Harness-connection-diagnostics.jsonl`。已有文件来自旧诊断版本。官方会话、附件及模型输出仍按官方逻辑保存。
 
 ## 自动保存的文件
 

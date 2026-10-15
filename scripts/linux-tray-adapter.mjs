@@ -9,8 +9,8 @@ export const linuxTrayReplacements = [
     "const kylinProcesses = process.platform === 'linux' ? new KylinProcessTree() : undefined\nlet focusPrimaryWindow = (): void => {}",
   ],
   [
-    '    show,\n    ...(process.platform',
-    "    show,\n    ...(process.platform === 'linux' ? {\n      icon: app.isPackaged ? join(process.resourcesPath, 'icon.png')\n        : join(app.getAppPath(), 'resources', 'icon-windows.png'),\n      skipTaskbar: false,\n    } : {}),\n    ...(process.platform",
+    '    minHeight: 600,\n    show,\n',
+    "    minHeight: 600,\n    show,\n    ...(process.platform === 'linux' ? {\n      icon: app.isPackaged ? join(process.resourcesPath, 'icon.png')\n        : join(app.getAppPath(), 'resources', 'icon-windows.png'),\n      skipTaskbar: false,\n    } : {}),\n",
   ],
   [
     "  if (process.platform === 'win32') {\n    // The tray is the way back",

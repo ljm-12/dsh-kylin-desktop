@@ -107,7 +107,7 @@ test('upstream tray routes icon activation and menu actions through open and gra
   assert.equal(context.instance.destroyed, 1)
 })
 
-test('source gate rejects any main-process edits beyond the exact Linux tray adapter', options, () => {
+test('source gate rejects edits beyond the exact Linux shell adapters', options, () => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-tray-source-gate-'))
   const source = join(root, 'source')
   try {
@@ -121,6 +121,14 @@ test('source gate rejects any main-process edits beyond the exact Linux tray ada
     writeFileSync(cleanup, originalCleanup)
     const main = join(source, 'apps/desktop/src/main.ts')
     writeFileSync(main, readFileSync(main, 'utf8') + '\n// unrelated change\n')
-    assert.throws(() => verifyOfficialSource(source), /exact Linux tray adapter/)
+    assert.throws(() => verifyOfficialSource(source), /exact Linux shell adapters/)
+    writeFileSync(main, readFileSync(main, 'utf8').replace('\n// unrelated change\n', ''))
+    for (const file of ['preload-windows.ts', 'preload-platform.ts']) {
+      const path = join(source, 'apps/desktop/src', file)
+      const original = readFileSync(path, 'utf8')
+      writeFileSync(path, original + '\n// unrelated preload change\n')
+      assert.throws(() => verifyOfficialSource(source), /exact Linux shell adapters/)
+      writeFileSync(path, original)
+    }
   } finally { rmSync(root, { recursive: true, force: true }) }
 })

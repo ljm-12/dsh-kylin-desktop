@@ -20,6 +20,8 @@ test('Linux extension matches pinned official source and is idempotent',
         'apps/desktop/scripts/electron-builder-config.mjs',
         'apps/desktop/cli/dsh',
         'apps/desktop/src/main.ts',
+        'apps/desktop/src/preload-windows.ts',
+        'apps/desktop/src/preload-platform.ts',
       ]
       for (const file of files) {
         const original = execFileSync('git', ['-C', process.env.DSH_TEST_SOURCE, 'show', `HEAD:${file}`])

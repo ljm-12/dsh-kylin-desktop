@@ -2,8 +2,9 @@ import { copyFileSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { linuxTrayReplacements } from './linux-tray-adapter.mjs'
+import { linuxWindowReplacements } from './linux-window-adapter.mjs'
 
-// Extend build selectors and the Linux tray; all other behavior stays upstream.
+// Extend build selectors, Linux tray and caption; all other behavior stays upstream.
 export function patchOfficialDesktop(root) {
   function edit(file, changes) {
     const path = resolve(root, file)
@@ -55,6 +56,7 @@ export function patchOfficialDesktop(root) {
       'export NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-$resources/config/proxy-root-ca.crt}"\nELECTRON_RUN_AS_NODE=1 exec "$resources/../deepseek-harness-kylin.bin"'],
   ])
   edit('apps/desktop/src/main.ts', linuxTrayReplacements)
+  for (const [file, changes] of linuxWindowReplacements) edit(file, changes)
   copyFileSync(new URL('../build/kylin-process-tree.ts', import.meta.url), resolve(root, 'apps/desktop/src/kylin-process-tree.ts'))
 }
 
