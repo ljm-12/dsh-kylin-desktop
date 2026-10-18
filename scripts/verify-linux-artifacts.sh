@@ -36,12 +36,14 @@ assert.deepEqual(fs.readFileSync(path.join(app,"resources/app.asar/lib/main.js")
   fs.readFileSync(path.join(process.env.DSH_SOURCE_DIR,"apps/desktop/lib/main.js")),"official desktop main changed");
 assert.deepEqual(fs.readFileSync(path.join(app,"resources/app.asar/lib/preload-app.cjs")),
   fs.readFileSync(path.join(process.env.DSH_SOURCE_DIR,"apps/desktop/lib/preload-app.cjs")),"adapted caption preload changed");
-const client = fs.readFileSync(path.join(app,"resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/client.js"),"utf8");
+const client = fs.readFileSync(path.join(app,"resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/client.browser.js"),"utf8");
 assert.doesNotMatch(client,/generation source failed:|stableGenerationMs/);
 for (const [name, sourcePath] of [["dsh-client-connection","packages/client/connection"], ["dsh-api-gateway","packages/api/gateway"]]) {
-  const packaged=fs.readFileSync(path.join(app,"resources/app.asar/dsh/node_modules/@deepseek-ai",name,"lib/client.js"));
-  const official=fs.readFileSync(path.join(process.env.DSH_SOURCE_DIR,sourcePath,"lib/client.js"));
-  assert.deepEqual(packaged,official,"packaged runtime differs from official compilation: "+name);
+  for (const entry of ["client.browser.js", "client.node.js"]) {
+    const packaged=fs.readFileSync(path.join(app,"resources/app.asar/dsh/node_modules/@deepseek-ai",name,"lib",entry));
+    const official=fs.readFileSync(path.join(process.env.DSH_SOURCE_DIR,sourcePath,"lib",entry));
+    assert.deepEqual(packaged,official,"packaged runtime differs from official compilation: "+name+"/"+entry);
+  }
 }
 console.log("Verified packaged build identity and official Connection/Gateway bytes:",commit,revision);
 ' "$APP" "$PACKAGING_COMMIT" "$DSH_BUILD_REVISION" "$VERSION"

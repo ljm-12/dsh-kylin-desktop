@@ -53,9 +53,9 @@ async function run() {
     const [{ DesktopHostProcess }, { createPluginProfile }, web] = await Promise.all([
       load('host-process.js'), load('project-manager.js'), load('web-document.js'),
     ])
-    const client = readFileSync(join(runtime, 'node_modules/@deepseek-ai/dsh-client-connection/lib/client.js'), 'utf8')
+    const client = readFileSync(join(runtime, 'node_modules/@deepseek-ai/dsh-client-connection/lib/client.browser.js'), 'utf8')
     assert.doesNotMatch(client, /generation source failed:|stableGenerationMs/, 'custom Connection code must not be packaged')
-    assert.equal(client, readFileSync(join(source, 'packages/client/connection/lib/client.js'), 'utf8'), 'packaged Connection differs from official compilation')
+    assert.equal(client, readFileSync(join(source, 'packages/client/connection/lib/client.browser.js'), 'utf8'), 'packaged Connection differs from official compilation')
     console.log('Official page connection smoke: official compiled client verified')
     const profile = join(scratch, 'home/profiles/desktop')
     createPluginProfile(profile)
