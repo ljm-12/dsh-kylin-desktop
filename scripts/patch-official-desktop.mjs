@@ -28,9 +28,6 @@ export function patchOfficialDesktop(root) {
     ["readonly platform: 'darwin' | 'win32'", "readonly platform: 'darwin' | 'win32' | 'linux'"],
   ])
   edit('apps/desktop/scripts/prepare-runtime.ts', [
-    ["const { version } = require('electron/package.json') as { version: string }",
-      "const { version: officialElectronVersion } = require('electron/package.json') as { version: string }\n  const version = platform === 'linux' ? '44.5.1' : officialElectronVersion"],
-    ["target.startsWith('mac-') ? 'darwin' : 'win32'", "target.startsWith('mac-') ? 'darwin' : target.startsWith('linux-') ? 'linux' : 'win32'"],
     ["platform === 'win32' ? 'electron.exe' : 'Electron.app/Contents/MacOS/Electron'", "platform === 'win32' ? 'electron.exe' : platform === 'linux' ? 'electron' : 'Electron.app/Contents/MacOS/Electron'"],
   ])
   edit('apps/desktop/scripts/prepare-cli.ts', [
@@ -45,8 +42,8 @@ export function patchOfficialDesktop(root) {
     ["readonly target: DesktopAutoUpdateTarget", "readonly target: DesktopAutoUpdateTarget | 'linux-arm64'"],
   ])
   edit('apps/desktop/scripts/electron-builder-config.mjs', [
-    ["const policy = resolveDesktopPolicyEnvironment(env)",
-      "const policy = (env.DSH_DESKTOP_TARGET_PLATFORM ?? hostPlatform) === 'linux' ? undefined : resolveDesktopPolicyEnvironment(env)"],
+    ["const policy = packagesMacOS && unsigned ? undefined : resolveDesktopPolicyEnvironment(env)",
+      "const policy = resolvedPlatform === 'linux' || (packagesMacOS && unsigned) ? undefined : resolveDesktopPolicyEnvironment(env)"],
     ["const update = unsigned ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)",
       "const update = unsigned || resolvedPlatform === 'linux' ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)"],
   ])

@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import { patchLinuxTray } from './linux-tray-adapter.mjs'
 import { linuxWindowReplacements, patchLinuxWindow } from './linux-window-adapter.mjs'
 
-export const officialCommit = '639ed015397290b3745d163aafe02ffee4aa3f84'
+export const officialCommit = '687f282e8625c6b8d11ff58211a90524be2e4317'
 export const allowedFiles = new Set([
   'apps/desktop/scripts/desktop-build-paths.mjs',
   'apps/desktop/scripts/desktop-build-paths.d.mts',
@@ -26,7 +26,7 @@ export function assertAllowedChanges(files) {
 }
 export function verifyOfficialSource(source) {
   const git = args => execFileSync('git', ['-C', source, ...args], { encoding: 'utf8' }).trim()
-  assert.equal(git(['rev-parse', 'HEAD']), officialCommit, 'official source must use the pinned rc.2 commit')
+  assert.equal(git(['rev-parse', 'HEAD']), officialCommit, 'official source must use the pinned 0.2.1-rc.2 commit')
   const files = git(['diff', '--name-only', 'HEAD']).split('\n').filter(Boolean)
   assertAllowedChanges(files)
   for (const file of linuxWindowReplacements.keys()) {
@@ -39,7 +39,8 @@ export function verifyOfficialSource(source) {
   const runtime = 'apps/desktop/scripts/prepare-runtime.ts'
   if (files.includes(runtime)) {
     const prepared = readFileSync(resolve(source, runtime), 'utf8')
-    assert.match(prepared, /const version = platform === 'linux' \? '44\.5\.1' : officialElectronVersion/)
+    assert.match(prepared, /const \{ version \} = require\('electron\/package\.json'\)/)
+    assert.doesNotMatch(prepared, /officialElectronVersion/, 'use the official Electron dependency without a Linux override')
   }
   // Also reject added non-ignored runtime/source files.
   const additions = git(['ls-files', '--others', '--exclude-standard']).split('\n').filter(Boolean)

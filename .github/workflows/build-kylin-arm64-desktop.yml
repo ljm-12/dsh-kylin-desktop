@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       dsh_ref:
-        description: Exact official dsh-v tag (adapter tested with dsh-v0.2.0-rc.2)
+        description: Exact official dsh-v tag (adapter tested with dsh-v0.2.1-rc.2)
         required: true
-        default: dsh-v0.2.0-rc.2
+        default: dsh-v0.2.1-rc.2
         type: string
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
-          version: 11.7.0
+          version: 11.28.5
       - uses: actions/setup-node@v6
         with:
           node-version: 24

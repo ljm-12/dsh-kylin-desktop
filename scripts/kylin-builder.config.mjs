@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
 import { execFileSync } from 'node:child_process'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -7,13 +8,15 @@ const upstream = process.env.DSH_SOURCE_DIR
 if (!upstream) throw new Error('DSH_SOURCE_DIR must identify the pinned official checkout')
 const { createElectronBuilderConfig } = await import(join(upstream, 'apps/desktop/scripts/electron-builder-config.mjs'))
 const config = createElectronBuilderConfig(process.env, 'linux', 'arm64')
+const require = createRequire(join(upstream, 'apps/desktop/package.json'))
+const { version: electronVersion } = require('electron/package.json')
 const packagingCommit = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
 const revision = process.env.DSH_BUILD_REVISION
 if (!revision || !/^\d+\.\d+$/.test(revision)) throw new Error('DSH_BUILD_REVISION must be a numeric build and attempt')
 export default {
   ...config,
-  // 44.0.0 registers an invalid combined bus-name/path with UKUI's watcher.
-  electronVersion: '44.5.1',
+  // Use the same lockfile-pinned Electron as upstream runtime preparation.
+  electronVersion,
   appId: 'ai.deepseek.harness.kylin',
   productName: 'DeepSeek Harness Kylin',
   buildNumber: revision,

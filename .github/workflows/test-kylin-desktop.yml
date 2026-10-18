@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           repository: deepseek-ai/deepseek-harness
-          ref: dsh-v0.2.0-rc.2
+          ref: dsh-v0.2.1-rc.2
           path: upstream
           persist-credentials: false
       - uses: actions/setup-node@v6
@@ -47,7 +47,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-0 libnss3 libasound2t64 libxss1 libxtst6 xvfb openbox xdotool x11-utils dbus-x11 python3-dbus python3-gi
-          npm install --prefix "$RUNNER_TEMP/tray-electron" --no-package-lock --ignore-scripts electron@44.5.1
+          npm install --prefix "$RUNNER_TEMP/tray-electron" --no-package-lock --ignore-scripts electron@44.7.0
           env -u ELECTRON_SKIP_BINARY_DOWNLOAD node "$RUNNER_TEMP/tray-electron/node_modules/electron/install.js"
           timeout 90s dbus-run-session -- xvfb-run -a node scripts/native-tray-smoke.mjs "$RUNNER_TEMP/tray-electron/node_modules/electron/dist/electron"
           timeout 60s dbus-run-session -- xvfb-run -a --server-args='-screen 0 1600x1000x24' node scripts/native-caption-smoke.mjs "$RUNNER_TEMP/tray-electron/node_modules/electron/dist/electron"

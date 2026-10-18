@@ -21,12 +21,14 @@ test -x "$APP/deepseek-harness-kylin.bin"
 PACKAGING_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 ELECTRON_RUN_AS_NODE=1 "$APP/deepseek-harness-kylin.bin" -e '
 const fs = require("node:fs"), path = require("node:path"), assert = require("node:assert/strict");
-const [app, commit, revision] = process.argv.slice(1);
-assert.equal(process.versions.electron,"44.5.1","Electron tray fix was not packaged");
+const [app, commit, revision, version] = process.argv.slice(1);
+const {createRequire} = require("node:module");
+const upstreamRequire = createRequire(path.join(process.env.DSH_SOURCE_DIR,"apps/desktop/package.json"));
+assert.equal(process.versions.electron,upstreamRequire("electron/package.json").version,"official Electron was not packaged");
 const manifest = JSON.parse(fs.readFileSync(path.join(app,"resources/app.asar/package.json"),"utf8"));
 assert.equal(manifest.kylinBuild.packagingCommit, commit);
 assert.equal(manifest.kylinBuild.revision, revision);
-assert.equal(manifest.version,"0.2.0-rc.2");
+assert.equal(manifest.version,version);
 assert.equal(manifest.main,"lib/main.js");
 assert.equal(fs.existsSync(path.join(app,"resources/transport-diagnostics.cjs")),false,"temporary transport observer was packaged");
 assert.equal(fs.existsSync(path.join(app,"resources/app.asar/lib/kylin-main.mjs")),false,"temporary desktop entrypoint was packaged");
@@ -42,7 +44,7 @@ for (const [name, sourcePath] of [["dsh-client-connection","packages/client/conn
   assert.deepEqual(packaged,official,"packaged runtime differs from official compilation: "+name);
 }
 console.log("Verified packaged build identity and official Connection/Gateway bytes:",commit,revision);
-' "$APP" "$PACKAGING_COMMIT" "$DSH_BUILD_REVISION"
+' "$APP" "$PACKAGING_COMMIT" "$DSH_BUILD_REVISION" "$VERSION"
 cmp "$ROOT/build/kylin-launcher.sh" "$APP/deepseek-harness-kylin"
 ELECTRON_RUN_AS_NODE=1 "$APP/deepseek-harness-kylin.bin" \
   "$ROOT/scripts/websocket-compatibility-smoke.cjs" "$APP/resources/app.asar/dsh/node_modules/ws"

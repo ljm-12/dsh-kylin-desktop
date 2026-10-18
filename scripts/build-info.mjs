@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { createHash } from 'node:crypto'
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -32,7 +33,7 @@ writeFileSync(join(root, 'dist/BUILD-INFO.json'), JSON.stringify({
   desktopConnectionSmoke: 'materialized-and-final-asar-official-page-and-host-60s-native-sse-mux',
   desktopLauncherSmoke: 'final-deb-integrated-caption-drag-maximize-minimize-60s-mux-sse-taskbar-icon-close-to-tray-restore-menu-quit',
   linuxTray: 'png-icon-status-notifier-click-restore-localized-menu-graceful-quit',
-  electronVersion: '44.5.1',
+  electronVersion: createRequire(join(source, 'apps/desktop/package.json'))('electron/package.json').version,
   linuxProcessCleanup: 'graceful-host-shutdown-then-owned-descendants-term-kill-with-pid-reuse-check',
   linuxProcessCleanupSha256: hash(join(root, 'build/kylin-process-tree.ts')),
   websocketCompatibility: 'omit-zero-length-payload-iovec-with-identical-frame-bytes',

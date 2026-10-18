@@ -63,7 +63,7 @@ async function run() {
     host = new DesktopHostProcess(hostExecutable, runtime, profile, undefined,
       { ...process.env, DSH_HOME: join(scratch, 'home'), NODE_OPTIONS: '' },
       error => { fatal = error }, join(resourcesRuntime, 'primary-runtime'),
-      { pnpm: join(resourcesRuntime, 'pnpm/bin/pnpm.cjs'), nodeBin: join(resourcesRuntime, 'bin') })
+      { pnpm: join(resourcesRuntime, 'primary-runtime/dependencies/pnpm/bin/pnpm.mjs'), nodeBin: join(resourcesRuntime, 'bin') })
     const ready = await host.start()
     const origin = new URL(ready.url).origin
     const cookie = await web.authenticateWebHost(ready.url)
