@@ -30,6 +30,14 @@ assert.equal(manifest.kylinBuild.packagingCommit, commit);
 assert.equal(manifest.kylinBuild.revision, revision);
 assert.equal(manifest.version,version);
 assert.equal(manifest.main,"lib/main.js");
+// Prove that this Electron still needs the one-line official Office ASAR fix.
+const absentNativeOffice = path.join(app,"resources/app.asar/dsh/node_modules/@deepseek-ai/libreoffice-kit-linux-arm64-glibc");
+assert.equal(fs.existsSync(absentNativeOffice),false,"expected the official Linux WASM fallback");
+const missingOfficeStatus = fs.lstatSync(absentNativeOffice,{throwIfNoEntry:false});
+assert.equal(missingOfficeStatus,null,"Electron ASAR behavior changed; review and remove the Office compatibility patch");
+assert.equal(missingOfficeStatus !== undefined,true,"original Office predicate must reproduce the false positive");
+assert.equal(missingOfficeStatus != null,false,"patched Office predicate must treat the missing engine as absent");
+console.log("Office ASAR compatibility required: actual packaged Electron returns null; original predicate misdetects missing native engine, fixed predicate permits official WASM fallback");
 assert.equal(fs.existsSync(path.join(app,"resources/transport-diagnostics.cjs")),false,"temporary transport observer was packaged");
 assert.equal(fs.existsSync(path.join(app,"resources/app.asar/lib/kylin-main.mjs")),false,"temporary desktop entrypoint was packaged");
 assert.deepEqual(fs.readFileSync(path.join(app,"resources/app.asar/lib/main.js")),
