@@ -47,6 +47,11 @@ export function patchOfficialDesktop(root) {
     ["const update = unsigned ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)",
       "const update = unsigned || resolvedPlatform === 'linux' ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)"],
   ])
+  // Official signed-release retention has no Linux feed. Our workflow uploads the deb.
+  edit('apps/desktop/scripts/retain-desktop-ci.ts', [
+    ["const target = resolveDesktopBuildTarget(env)",
+      "const target = resolveDesktopBuildTarget(env)\n  if (target === 'linux-arm64') throw new Error('Linux packages use the Kylin artifact workflow')"],
+  ])
   // The official POSIX CLI launcher currently has a macOS bundle path.
   edit('apps/desktop/cli/dsh', [
     ['ELECTRON_RUN_AS_NODE=1 exec "$resources/../MacOS/DeepSeek Harness"',

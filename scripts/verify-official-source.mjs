@@ -14,6 +14,7 @@ export const allowedFiles = new Set([
   'apps/desktop/scripts/prepare-cli.ts',
   'apps/desktop/scripts/prepare-dsh.ts',
   'apps/desktop/scripts/development-project.ts',
+  'apps/desktop/scripts/retain-desktop-ci.ts',
   'apps/desktop/scripts/electron-builder-config.mjs',
   'apps/desktop/cli/dsh',
   'apps/desktop/src/main.ts',
