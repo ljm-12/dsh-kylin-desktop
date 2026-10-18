@@ -16,6 +16,13 @@ const scratch = mkdtempSync(join(tmpdir(), 'dsh-native-caption-'))
 const manager = spawn('openbox', ['--sm-disable'], { stdio: 'ignore' })
 let child, output = ''
 try {
+  let managerReady = false
+  for (let attempt = 0; attempt < 100; attempt++) {
+    managerReady = /window id # 0x[1-9a-f]/i.test(execFileSync('xprop', ['-root', '_NET_SUPPORTING_WM_CHECK'], { encoding: 'utf8' }))
+    if (managerReady) break
+    await delay(100)
+  }
+  assert.ok(managerReady, 'Openbox did not claim the virtual display')
   const original = readFileSync(join(upstream, 'apps/desktop/src/main.ts'), 'utf8')
   const main = patchLinuxWindow('apps/desktop/src/main.ts', patchLinuxTray(original))
   const start = main.indexOf('  const window = new BrowserWindow({')

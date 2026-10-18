@@ -30,6 +30,8 @@ async function until(condition, description) {
 }
 try {
   await until(() => existsSync(registry), 'Tray watcher did not start')
+  await until(() => /window id # 0x[1-9a-f]/i.test(execFileSync('xprop', ['-root', '_NET_SUPPORTING_WM_CHECK'], { encoding: 'utf8' })),
+    'Openbox did not claim the virtual display')
   const tray = stripTypeScriptTypes(readFileSync(join(upstream, 'apps/desktop/src/tray.ts'), 'utf8'), { mode: 'transform' })
     .replace(/^import.*$/mg, '').replace('export class', 'class')
   const main = patchLinuxTray(readFileSync(join(upstream, 'apps/desktop/src/main.ts'), 'utf8'))
@@ -48,7 +50,7 @@ ${tray}
 app.setPath('userData',${JSON.stringify(join(scratch, 'profile'))});
 let quitting=false,tray;
 app.whenReady().then(()=>{
- const window=new BrowserWindow({width:500,height:300,icon:${JSON.stringify(join(upstream,'apps/desktop/resources/icon-windows.png'))}});
+ const window=new BrowserWindow({title:'Kylin tray qualification',width:500,height:300,icon:${JSON.stringify(join(upstream,'apps/desktop/resources/icon-windows.png'))}});
  const publish=()=>{writeFileSync(${JSON.stringify(state + '.tmp')},JSON.stringify({visible:window.isVisible()}));renameSync(${JSON.stringify(state + '.tmp')},${JSON.stringify(state)});};
  const shellInstallerOwnsQuit=false,sessionEnding=false,backgroundNotice=undefined;
  const updateDialog={isOpen:false};const hideMainWindow=window=>window.hide();
@@ -57,7 +59,7 @@ app.whenReady().then(()=>{
  open:()=>{window.show();window.focus();},quit:()=>setTimeout(()=>app.quit(),20)});
  ${close}
  window.on('hide',publish);window.on('show',publish);
- window.loadURL('data:text/html,<h1>Native tray qualification</h1>').then(publish);
+ window.loadURL('data:text/html,<title>Kylin tray qualification</title><h1>Native tray qualification</h1>').then(publish);
 });
 app.on('before-quit',event=>{if(quitting)return;event.preventDefault();quitting=true;tray?.dispose();
 console.log('Native cleanup candidates',JSON.stringify(ownedProcesses.capture().map(item=>({pid:item.pid,exe:readlinkSync('/proc/'+item.pid+'/exe'),args:readFileSync('/proc/'+item.pid+'/cmdline','utf8')}))));
@@ -73,17 +75,18 @@ ownedProcesses.stop().then(()=>app.quit(),()=>app.exit(1));});
   assert.equal(info.status, 'Active')
   assert.equal(info.icon, true)
   assert.deepEqual(info.entries.map(entry => entry.label), ['Show', 'Quit'])
-  const window = execFileSync('xdotool', ['search', '--onlyvisible', '--pid', String(child.pid)], { encoding: 'utf8' }).trim().split('\n')[0]
-  const closeWindow = () => {
+  const window = execFileSync('xdotool', ['search', '--all', '--onlyvisible', '--pid', String(child.pid), '--name', '^Kylin tray qualification$'], { encoding: 'utf8' }).trim().split('\n')[0]
+  const closeWindow = async () => {
     execFileSync('xdotool', ['windowactivate', '--sync', window])
+    await delay(200)
     execFileSync('xdotool', ['key', '--clearmodifiers', 'alt+F4'])
   }
-  closeWindow()
+  await closeWindow()
   await until(() => !JSON.parse(readFileSync(state)).visible, 'Window did not hide')
   assert.equal(child.exitCode, null)
   action('activate')
   await until(() => JSON.parse(readFileSync(state)).visible, 'Tray activation did not restore the window')
-  closeWindow()
+  await closeWindow()
   await until(() => !JSON.parse(readFileSync(state)).visible, 'Second close did not hide')
   action('open')
   await until(() => JSON.parse(readFileSync(state)).visible, 'Show menu did not restore the window')
